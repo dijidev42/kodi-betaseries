@@ -51,6 +51,8 @@ _mass_update_started_ts = 0
 
 EPISODES_INDEX_FILE = os.path.join(__profile__, 'episodes_sync_index.json')
 MOVIES_INDEX_FILE = os.path.join(__profile__, 'movies_sync_index.json')
+EPISODES_PROGRESS_FILE = os.path.join(__profile__, 'episodes_sync_progress.json')
+MOVIES_PROGRESS_FILE = os.path.join(__profile__, 'movies_sync_progress.json')
 STOP_EPISODES_FILE = os.path.join(__profile__, 'sync_episodes.stop')
 STOP_MOVIES_FILE = os.path.join(__profile__, 'sync_movies.stop')
 
@@ -98,8 +100,8 @@ def log_api_error(item, context, data):
             context, format_item_label(item), str(code), str(text)
         ), xbmc.LOGERROR)
     else:
-        log('%s failed for %s - unknown API error: %s' % (
-            context, format_item_label(item), repr(data)
+        log('%s failed for %s - unknown API error' % (
+            context, format_item_label(item)
         ), xbmc.LOGERROR)
 
 
@@ -172,13 +174,13 @@ def set_user_agent():
         ))
         major = str(json_query['result']['version']['major'])
         minor = str(json_query['result']['version']['minor'])
-        name = 'Kodi' if int(major) >= 14 else 'XBMC'
-        version = '%s %s.%s' % (name, major, minor)
+        name = "Kodi" if int(major) >= 14 else "XBMC"
+        version = "%s %s.%s" % (name, major, minor)
     except Exception:
-        log('could not get app version')
-        version = 'XBMC'
+        log("could not get app version")
+        version = "XBMC"
 
-    return 'Mozilla/5.0 (compatible; %s; %s; %s/%s)' % (__platform__, version, __addonid__, __addonversion__)
+    return "Mozilla/5.0 (compatible; %s; %s; %s/%s)" % (__platform__, version, __addonid__, __addonversion__)
 
 
 def get_urldata(url, urldata, method):
@@ -254,22 +256,48 @@ def parse_params(argv):
     return dict((k, v[0]) for k, v in parsed.items())
 
 
-def load_index(filepath):
+def load_json_file(filepath, default_value):
     ensure_profile_dir()
     try:
         with open(filepath, 'r') as f:
             data = json.loads(f.read())
-            if isinstance(data, dict):
+            if data is not None:
                 return data
     except Exception:
         pass
-    return {}
+    return default_value
 
 
-def save_index(filepath, data):
+def save_json_file(filepath, data):
     ensure_profile_dir()
     with open(filepath, 'w') as f:
         f.write(json.dumps(data))
+
+
+def load_index(filepath):
+    data = load_json_file(filepath, {})
+    return data if isinstance(data, dict) else {}
+
+
+def save_index(filepath, data):
+    save_json_file(filepath, data)
+
+
+def load_progress(filepath):
+    data = load_json_file(filepath, {})
+    return data if isinstance(data, dict) else {}
+
+
+def save_progress(filepath, data):
+    save_json_file(filepath, data)
+
+
+def clear_progress(filepath):
+    try:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+    except Exception:
+        pass
 
 
 def create_stop_flag(filepath):
@@ -473,7 +501,6 @@ class BetaSeriesAgent:
             return True
 
         log_api_error(episode, 'Follow show', data)
-        notify(__language__(32005) + episode[4])
         return False
 
     def _build_mark_request(self, item):
@@ -538,8 +565,6 @@ class BetaSeriesAgent:
             code = errors[0]['code']
             if code == 2001:
                 service[6] = ''
-            elif code not in (0,):
-                notify(__language__(30217) % format_item_label(item), 1200)
             return False
 
         self._queue_success_notification(item)
@@ -768,10 +793,10 @@ class ManualSync:
         self.resolver = resolver
         self.monitor = xbmc.Monitor()
 
-    def _make_progress_lines(self, media_label, current, total, updated, skipped, current_label):
+    def _make_progress_lines(self, media_label, current, total, updated, skipped, errors_count, current_label):
         percent = int((float(current) / float(total)) * 100) if total else 0
         line1 = '%s : %d / %d (%d%%)' % (media_label, current, total, percent)
-        line2 = __language__(30207) % (updated, skipped)
+        line2 = 'OK: %d | Ignorés: %d | Erreurs: %d' % (updated, skipped, errors_count)
         line3 = safe_label(current_label or __language__(30204))
         return line1, line2, line3
 
@@ -783,29 +808,46 @@ class ManualSync:
             return True
         return False
 
+    def _resume_position(self, entries, progress_key, key_getter):
+        if not progress_key:
+            return 0
+        for idx, entry in enumerate(entries):
+            if key_getter(entry) == progress_key:
+                return idx + 1
+        return 0
+
     def sync_episodes(self, reset=False):
         clear_stop_flag(STOP_EPISODES_FILE)
         index = {} if reset else load_index(EPISODES_INDEX_FILE)
+        progress_state = {} if reset else load_progress(EPISODES_PROGRESS_FILE)
+
         data = kodi_jsonrpc('VideoLibrary.GetEpisodes', {'properties': ['playcount', 'showtitle', 'season', 'episode']})
         episodes = data.get('result', {}).get('episodes', [])
+
+        def entry_key(ep):
+            return 'episodeid_%s' % str(ep.get('episodeid'))
+
+        start_index = self._resume_position(episodes, progress_state.get('last_processed_key'), entry_key)
+        entries = episodes[start_index:]
+
         total = len(episodes)
-        start_mass_update_notification(__language__(30201))
         updated = 0
         skipped = 0
+        errors_count = 0
         new_index = dict(index)
         progress = SyncProgressDialog(__addonname__)
-        progress.create(__language__(30201), __language__(30204), '0 / %d' % total)
+        progress.create(__language__(30201), __language__(30204), '%d / %d' % (start_index, total))
         canceled = False
 
         try:
-            for i, ep in enumerate(episodes, 1):
+            for pos, ep in enumerate(entries, start_index + 1):
                 current_label = '%s - S%02dE%02d' % (
                     ep.get('showtitle', __language__(30208)),
                     int(ep.get('season') or 0),
                     int(ep.get('episode') or 0)
                 )
-                line1, line2, line3 = self._make_progress_lines(__language__(30205), i, total, updated, skipped, current_label)
-                progress.update(i, total, line1, line2, line3)
+                line1, line2, line3 = self._make_progress_lines(__language__(30205), pos, total, updated, skipped, errors_count, current_label)
+                progress.update(pos, total, line1, line2, line3)
 
                 if self._should_stop(STOP_EPISODES_FILE, progress):
                     canceled = True
@@ -814,8 +856,15 @@ class ManualSync:
 
                 episodeid = ep.get('episodeid')
                 playcount = int(ep.get('playcount') or 0)
+
+                progress_state['last_processed_key'] = entry_key(ep)
+                progress_state['last_position'] = pos
+                progress_state['remaining'] = max(total - pos, 0)
+                save_progress(EPISODES_PROGRESS_FILE, progress_state)
+
                 item = self.resolver.get_episode_info(episodeid, playcount, False)
                 if not item:
+                    errors_count += 1
                     continue
 
                 key = str(item[1])
@@ -832,34 +881,49 @@ class ManualSync:
                         'label': item[5],
                         'show': item[4]
                     }
+                    save_index(EPISODES_INDEX_FILE, new_index)
+                else:
+                    errors_count += 1
         finally:
             progress.close()
             save_index(EPISODES_INDEX_FILE, new_index)
             clear_stop_flag(STOP_EPISODES_FILE)
             _flush_batched_notifications(force=True)
 
-        if not canceled:
-            notify(__language__(30212) % (updated, skipped, total), 2500)
+        if canceled:
+            return
+
+        clear_progress(EPISODES_PROGRESS_FILE)
+        notify('Episodes : %d synchronisés, %d ignorés, %d erreurs' % (updated, skipped, errors_count), 3000)
 
     def sync_movies(self, reset=False):
         clear_stop_flag(STOP_MOVIES_FILE)
         index = {} if reset else load_index(MOVIES_INDEX_FILE)
+        progress_state = {} if reset else load_progress(MOVIES_PROGRESS_FILE)
+
         data = kodi_jsonrpc('VideoLibrary.GetMovies', {'properties': ['playcount', 'title', 'originaltitle']})
         movies = data.get('result', {}).get('movies', [])
+
+        def entry_key(mv):
+            return 'movieid_%s' % str(mv.get('movieid'))
+
+        start_index = self._resume_position(movies, progress_state.get('last_processed_key'), entry_key)
+        entries = movies[start_index:]
+
         total = len(movies)
-        start_mass_update_notification(__language__(30202))
         updated = 0
         skipped = 0
+        errors_count = 0
         new_index = dict(index)
         progress = SyncProgressDialog(__addonname__)
-        progress.create(__language__(30202), __language__(30204), '0 / %d' % total)
+        progress.create(__language__(30202), __language__(30204), '%d / %d' % (start_index, total))
         canceled = False
 
         try:
-            for i, mv in enumerate(movies, 1):
+            for pos, mv in enumerate(entries, start_index + 1):
                 current_label = mv.get('originaltitle') or mv.get('title') or __language__(30209)
-                line1, line2, line3 = self._make_progress_lines(__language__(30206), i, total, updated, skipped, current_label)
-                progress.update(i, total, line1, line2, line3)
+                line1, line2, line3 = self._make_progress_lines(__language__(30206), pos, total, updated, skipped, errors_count, current_label)
+                progress.update(pos, total, line1, line2, line3)
 
                 if self._should_stop(STOP_MOVIES_FILE, progress):
                     canceled = True
@@ -868,8 +932,15 @@ class ManualSync:
 
                 movieid = mv.get('movieid')
                 playcount = int(mv.get('playcount') or 0)
+
+                progress_state['last_processed_key'] = entry_key(mv)
+                progress_state['last_position'] = pos
+                progress_state['remaining'] = max(total - pos, 0)
+                save_progress(MOVIES_PROGRESS_FILE, progress_state)
+
                 item = self.resolver.get_movie_info(movieid, playcount, False)
                 if not item:
+                    errors_count += 1
                     continue
 
                 key = 'movie_%s' % item[0]
@@ -885,14 +956,20 @@ class ManualSync:
                         'ts': int(time.time()),
                         'label': item[5]
                     }
+                    save_index(MOVIES_INDEX_FILE, new_index)
+                else:
+                    errors_count += 1
         finally:
             progress.close()
             save_index(MOVIES_INDEX_FILE, new_index)
             clear_stop_flag(STOP_MOVIES_FILE)
             _flush_batched_notifications(force=True)
 
-        if not canceled:
-            notify(__language__(30213) % (updated, skipped, total), 2500)
+        if canceled:
+            return
+
+        clear_progress(MOVIES_PROGRESS_FILE)
+        notify('Films : %d synchronisés, %d ignorés, %d erreurs' % (updated, skipped, errors_count), 3000)
 
 
 class MyPlayer(xbmc.Monitor):

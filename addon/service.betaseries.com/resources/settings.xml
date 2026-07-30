@@ -13,14 +13,14 @@
     </category>
 
     <category label="Synchronisation films">
-        <setting id="sync_movies_now" type="action" label="Synchroniser les films maintenant" action="RunScript(service.betaseries.com,?action=sync_movies)"/>
-        <setting id="full_sync_movies_now" type="action" label="Resynchroniser tous les films depuis le début" action="RunScript(service.betaseries.com,?action=full_sync_movies)"/>
-        <setting id="stop_sync_movies_now" type="action" label="Arrêter la synchro films en cours" action="RunScript(service.betaseries.com,?action=stop_sync_movies)"/>
+        <setting id="sync_movies_now" type="action" label="Démarrer/Reprendre la synchro des films" action="RunScript(service.betaseries.com,?action=sync_movies)"/>
+        <setting id="full_sync_movies_now" type="action" label="Resynchroniser tous les films" action="RunScript(service.betaseries.com,?action=full_sync_movies)"/>
+        <setting id="stop_sync_movies_now" type="action" label="Arrêter la synchro des films en cours" action="RunScript(service.betaseries.com,?action=stop_sync_movies)"/>
     </category>
 
     <category label="Synchronisation séries">
-        <setting id="sync_episodes_now" type="action" label="Synchroniser les séries/épisodes maintenant" action="RunScript(service.betaseries.com,?action=sync_episodes)"/>
-        <setting id="full_sync_episodes_now" type="action" label="Resynchroniser toutes les séries depuis le début" action="RunScript(service.betaseries.com,?action=full_sync_episodes)"/>
-        <setting id="stop_sync_episodes_now" type="action" label="Arrêter la synchro séries en cours" action="RunScript(service.betaseries.com,?action=stop_sync_episodes)"/>
+        <setting id="sync_episodes_now" type="action" label="Démarrer/Reprendre la synchro des séries/épisodes" action="RunScript(service.betaseries.com,?action=sync_episodes)"/>
+        <setting id="full_sync_episodes_now" type="action" label="Resynchroniser toutes les séries" action="RunScript(service.betaseries.com,?action=full_sync_episodes)"/>
+        <setting id="stop_sync_episodes_now" type="action" label="Arrêter la synchro des séries en cours" action="RunScript(service.betaseries.com,?action=stop_sync_episodes)"/>
     </category>
 </settings>
