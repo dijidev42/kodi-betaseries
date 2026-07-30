@@ -9,11 +9,11 @@ msgstr ""
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: XBMC Translation Team\n"
-"Language-Team: English\n"
+"Language-Team: English (http://www.transifex.com/projects/p/xbmc-addons/language/en/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: en_gb\n"
+"Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgctxt "#30000"
@@ -22,15 +22,15 @@ msgstr "General"
 
 msgctxt "#30003"
 msgid "Successfully loaded !"
-msgstr "Loaded successfully!"
+msgstr "Successfully loaded!"
 
 msgctxt "#30004"
 msgid "Activate BetaSeries.com service"
-msgstr "Enable BetaSeries.com service"
+msgstr "Activate BetaSeries.com service"
 
 msgctxt "#30005"
 msgid "Mark as viewed only when watched for the first time"
-msgstr "Mark as watched only after the first play"
+msgstr "Mark as watched only on first viewing"
 
 msgctxt "#30006"
 msgid "BetaSeries.com username"
@@ -58,7 +58,39 @@ msgstr "Automatically add newly watched shows"
 
 msgctxt "#30012"
 msgid "Notify on screen when marking episodes"
-msgstr "Show on-screen notifications when marking"
+msgstr "Show on-screen notifications when marking episodes"
+
+msgctxt "#30240"
+msgid "Movie synchronization"
+msgstr "Movie synchronization"
+
+msgctxt "#30241"
+msgid "Start/Resume movie sync"
+msgstr "Start/Resume movie sync"
+
+msgctxt "#30242"
+msgid "Resync all movies"
+msgstr "Resync all movies"
+
+msgctxt "#30243"
+msgid "Stop current movie sync"
+msgstr "Stop current movie sync"
+
+msgctxt "#30244"
+msgid "Series synchronization"
+msgstr "Series synchronization"
+
+msgctxt "#30245"
+msgid "Start/Resume series/episodes sync"
+msgstr "Start/Resume series/episodes sync"
+
+msgctxt "#30246"
+msgid "Resync all series"
+msgstr "Resync all series"
+
+msgctxt "#30247"
+msgid "Stop current series sync"
+msgstr "Stop current series sync"
 
 msgctxt "#30013"
 msgid "Show added : "
@@ -83,6 +115,106 @@ msgstr "Movie marked as not watched!"
 msgctxt "#30101"
 msgid "Episode marked as downloaded !"
 msgstr "Episode marked as downloaded!"
+
+msgctxt "#30200"
+msgid "sync started"
+msgstr "sync started"
+
+msgctxt "#30201"
+msgid "Episode sync"
+msgstr "Episode sync"
+
+msgctxt "#30202"
+msgid "Movie sync"
+msgstr "Movie sync"
+
+msgctxt "#30203"
+msgid "Preparing..."
+msgstr "Preparing..."
+
+msgctxt "#30204"
+msgid "Processing..."
+msgstr "Processing..."
+
+msgctxt "#30205"
+msgid "Episodes"
+msgstr "Episodes"
+
+msgctxt "#30206"
+msgid "Movies"
+msgstr "Movies"
+
+msgctxt "#30208"
+msgid "Unknown show"
+msgstr "Unknown show"
+
+msgctxt "#30209"
+msgid "Unknown movie"
+msgstr "Unknown movie"
+
+msgctxt "#30210"
+msgid "Episode sync stopped"
+msgstr "Episode sync stopped"
+
+msgctxt "#30211"
+msgid "Movie sync stopped"
+msgstr "Movie sync stopped"
+
+msgctxt "#30214"
+msgid "Episode sync stop requested"
+msgstr "Episode sync stop requested"
+
+msgctxt "#30215"
+msgid "Movie sync stop requested"
+msgstr "Movie sync stop requested"
+
+msgctxt "#30216"
+msgid "Unknown action: %s"
+msgstr "Unknown action: %s"
+
+msgctxt "#30218"
+msgid "%d episodes marked as watched"
+msgstr "%d episodes marked as watched"
+
+msgctxt "#30219"
+msgid "%d episodes marked as not watched"
+msgstr "%d episodes marked as not watched"
+
+msgctxt "#30220"
+msgid "%d episodes marked as downloaded"
+msgstr "%d episodes marked as downloaded"
+
+msgctxt "#30221"
+msgid "%d movies marked as watched"
+msgstr "%d movies marked as watched"
+
+msgctxt "#30222"
+msgid "%d movies marked as not watched"
+msgstr "%d movies marked as not watched"
+
+msgctxt "#30230"
+msgid "watched"
+msgstr "watched"
+
+msgctxt "#30231"
+msgid "not watched"
+msgstr "not watched"
+
+msgctxt "#30232"
+msgid "watched on %s"
+msgstr "watched on %s"
+
+msgctxt "#30233"
+msgid "OK: %d | Skipped: %d | Errors: %d"
+msgstr "OK: %d | Skipped: %d | Errors: %d"
+
+msgctxt "#30234"
+msgid "Episodes: %d synced, %d skipped, %d errors"
+msgstr "Episodes: %d synced, %d skipped, %d errors"
+
+msgctxt "#30235"
+msgid "Movies: %d synced, %d skipped, %d errors"
+msgstr "Movies: %d synced, %d skipped, %d errors"
 
 msgctxt "#32001"
 msgid "Authentication error"
@@ -111,95 +243,3 @@ msgstr "Failed to mark episode!"
 msgctxt "#32007"
 msgid "Failed to mark movie !"
 msgstr "Failed to mark movie!"
-
-msgctxt "#30200"
-msgid "BetaSeries update in progress..."
-msgstr "BetaSeries update in progress..."
-
-msgctxt "#30201"
-msgid "Shows synchronization in progress..."
-msgstr "Shows synchronization in progress..."
-
-msgctxt "#30202"
-msgid "Movies synchronization in progress..."
-msgstr "Movies synchronization in progress..."
-
-msgctxt "#30203"
-msgid "Initializing..."
-msgstr "Initializing..."
-
-msgctxt "#30204"
-msgid "Preparing..."
-msgstr "Preparing..."
-
-msgctxt "#30205"
-msgid "Episodes"
-msgstr "Episodes"
-
-msgctxt "#30206"
-msgid "Movies"
-msgstr "Movies"
-
-msgctxt "#30207"
-msgid "Synchronized: %d | Skipped: %d"
-msgstr "Synchronized: %d | Skipped: %d"
-
-msgctxt "#30208"
-msgid "Unknown show"
-msgstr "Unknown show"
-
-msgctxt "#30209"
-msgid "Unknown movie"
-msgstr "Unknown movie"
-
-msgctxt "#30210"
-msgid "Shows synchronization interrupted"
-msgstr "Shows synchronization interrupted"
-
-msgctxt "#30211"
-msgid "Movies synchronization interrupted"
-msgstr "Movies synchronization interrupted"
-
-msgctxt "#30212"
-msgid "Episodes: %d synchronized, %d skipped, total %d"
-msgstr "Episodes: %d synchronized, %d skipped, total %d"
-
-msgctxt "#30213"
-msgid "Movies: %d synchronized, %d skipped, total %d"
-msgstr "Movies: %d synchronized, %d skipped, total %d"
-
-msgctxt "#30214"
-msgid "Stop requested for shows synchronization"
-msgstr "Stop requested for shows synchronization"
-
-msgctxt "#30215"
-msgid "Stop requested for movies synchronization"
-msgstr "Stop requested for movies synchronization"
-
-msgctxt "#30216"
-msgid "Unknown action: %s"
-msgstr "Unknown action: %s"
-
-msgctxt "#30217"
-msgid "Sync error: %s"
-msgstr "Sync error: %s"
-
-msgctxt "#30218"
-msgid "%d episode(s) marked as watched"
-msgstr "%d episode(s) marked as watched"
-
-msgctxt "#30219"
-msgid "%d episode(s) marked as not watched"
-msgstr "%d episode(s) marked as not watched"
-
-msgctxt "#30220"
-msgid "%d episode(s) marked as downloaded"
-msgstr "%d episode(s) marked as downloaded"
-
-msgctxt "#30221"
-msgid "%d movie(s) marked as watched"
-msgstr "%d movie(s) marked as watched"
-
-msgctxt "#30222"
-msgid "%d movie(s) marked as not watched"
-msgstr "%d movie(s) marked as not watched"

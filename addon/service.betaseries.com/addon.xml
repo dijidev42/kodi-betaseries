@@ -8,8 +8,8 @@
     <extension point="xbmc.addon.metadata">
         <summary lang="en">Synchronization with BetaSeries.com</summary>
         <summary lang="fr">Synchronisation avec BetaSeries.com</summary>
-        <description lang="en">Manual Kodi to BetaSeries synchronization for movies and episodes, with separate stop actions and live single item updates.</description>
-        <description lang="fr">Synchronisation manuelle Kodi vers BetaSeries pour les films et épisodes, avec actions d'arrêt séparées et maintien des mises à jour unitaires en direct.</description>
+        <description lang="en">Kodi to BetaSeries synchronization for movies and shows.</description>
+        <description lang="fr">Synchronisation de Kodi vers BetaSeries pour les films et les séries.</description>
         <language></language>
         <platform>all</platform>
         <source>https://github.com/dijidev42/kodi-betaseries</source>

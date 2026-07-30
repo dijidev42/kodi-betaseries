@@ -561,10 +561,20 @@ class BetaSeriesAgent:
 
         errors = data.get('errors')
         if errors:
-            log_api_error(item, 'Sync', data)
             code = errors[0]['code']
+
             if code == 2001:
+                log_api_error(item, 'Sync', data)
                 service[6] = ''
+                return False
+
+            if item[6] == 'episode' and item[2] == 0 and code == 2005:
+                log('episode already not watched on BetaSeries: %s' % format_item_label(item), xbmc.LOGDEBUG)
+                self._queue_success_notification(item)
+                _flush_batched_notifications(force=False)
+                return True
+
+            log_api_error(item, 'Sync', data)
             return False
 
         self._queue_success_notification(item)
@@ -666,6 +676,22 @@ class KodiLibraryResolver:
             return episodes[0].get('thetvdb_id')
         return ''
 
+    def get_episode_status_text(self, episodeid, playcount):
+        try:
+            ep = kodi_jsonrpc(
+                'VideoLibrary.GetEpisodeDetails',
+                {'episodeid': episodeid, 'properties': ['lastplayed']}
+            )['result']['episodedetails']
+            lastplayed = ep.get('lastplayed') or ''
+        except Exception:
+            lastplayed = ''
+
+        if int(playcount or 0) > 0:
+            if lastplayed and lastplayed != '1601-01-01 00:00:00':
+                return __language__(30232) % lastplayed
+            return __language__(30230)
+        return __language__(30231)
+
     def get_episode_info(self, episodeid, playcount, playstatus):
         showtitle = ''
         season = None
@@ -749,6 +775,22 @@ class KodiLibraryResolver:
             return None, None
         return best.get('id'), (best.get('tmdb_id') or 0)
 
+    def get_movie_status_text(self, movieid, playcount):
+        try:
+            movie = kodi_jsonrpc(
+                'VideoLibrary.GetMovieDetails',
+                {'movieid': movieid, 'properties': ['lastplayed']}
+            )['result']['moviedetails']
+            lastplayed = movie.get('lastplayed') or ''
+        except Exception:
+            lastplayed = ''
+
+        if int(playcount or 0) > 0:
+            if lastplayed and lastplayed != '1601-01-01 00:00:00':
+                return __language__(30232) % lastplayed
+            return __language__(30230)
+        return __language__(30231)
+
     def get_movie_info(self, movieid, playcount, playstatus):
         try:
             movie = kodi_jsonrpc(
@@ -796,7 +838,7 @@ class ManualSync:
     def _make_progress_lines(self, media_label, current, total, updated, skipped, errors_count, current_label):
         percent = int((float(current) / float(total)) * 100) if total else 0
         line1 = '%s : %d / %d (%d%%)' % (media_label, current, total, percent)
-        line2 = 'OK: %d | Ignorés: %d | Erreurs: %d' % (updated, skipped, errors_count)
+        line2 = __language__(30233) % (updated, skipped, errors_count)
         line3 = safe_label(current_label or __language__(30204))
         return line1, line2, line3
 
@@ -841,10 +883,14 @@ class ManualSync:
 
         try:
             for pos, ep in enumerate(entries, start_index + 1):
-                current_label = '%s - S%02dE%02d' % (
+                episodeid = ep.get('episodeid')
+                playcount = int(ep.get('playcount') or 0)
+                status_text = self.resolver.get_episode_status_text(episodeid, playcount)
+                current_label = '%s - S%02dE%02d | %s' % (
                     ep.get('showtitle', __language__(30208)),
                     int(ep.get('season') or 0),
-                    int(ep.get('episode') or 0)
+                    int(ep.get('episode') or 0),
+                    status_text
                 )
                 line1, line2, line3 = self._make_progress_lines(__language__(30205), pos, total, updated, skipped, errors_count, current_label)
                 progress.update(pos, total, line1, line2, line3)
@@ -853,9 +899,6 @@ class ManualSync:
                     canceled = True
                     notify(30210, 2000)
                     break
-
-                episodeid = ep.get('episodeid')
-                playcount = int(ep.get('playcount') or 0)
 
                 progress_state['last_processed_key'] = entry_key(ep)
                 progress_state['last_position'] = pos
@@ -894,7 +937,7 @@ class ManualSync:
             return
 
         clear_progress(EPISODES_PROGRESS_FILE)
-        notify('Episodes : %d synchronisés, %d ignorés, %d erreurs' % (updated, skipped, errors_count), 3000)
+        notify(__language__(30234) % (updated, skipped, errors_count), 3000)
 
     def sync_movies(self, reset=False):
         clear_stop_flag(STOP_MOVIES_FILE)
@@ -921,7 +964,13 @@ class ManualSync:
 
         try:
             for pos, mv in enumerate(entries, start_index + 1):
-                current_label = mv.get('originaltitle') or mv.get('title') or __language__(30209)
+                movieid = mv.get('movieid')
+                playcount = int(mv.get('playcount') or 0)
+                status_text = self.resolver.get_movie_status_text(movieid, playcount)
+                current_label = '%s | %s' % (
+                    mv.get('originaltitle') or mv.get('title') or __language__(30209),
+                    status_text
+                )
                 line1, line2, line3 = self._make_progress_lines(__language__(30206), pos, total, updated, skipped, errors_count, current_label)
                 progress.update(pos, total, line1, line2, line3)
 
@@ -929,9 +978,6 @@ class ManualSync:
                     canceled = True
                     notify(30211, 2000)
                     break
-
-                movieid = mv.get('movieid')
-                playcount = int(mv.get('playcount') or 0)
 
                 progress_state['last_processed_key'] = entry_key(mv)
                 progress_state['last_position'] = pos
@@ -969,7 +1015,7 @@ class ManualSync:
             return
 
         clear_progress(MOVIES_PROGRESS_FILE)
-        notify('Films : %d synchronisés, %d ignorés, %d erreurs' % (updated, skipped, errors_count), 3000)
+        notify(__language__(30235) % (updated, skipped, errors_count), 3000)
 
 
 class MyPlayer(xbmc.Monitor):

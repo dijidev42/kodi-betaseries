@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
-    <category label="Configuration générale">
+    <category label="30000">
         <setting id="betaactive" type="bool" label="30004" default="true"/>
         <setting id="betauser" type="text" label="30006" default="" enable="eq(-1,true)"/>
         <setting id="betapass" type="text" label="30007" default="" enable="eq(-2,true)" option="hidden"/>
@@ -12,15 +12,15 @@
         <setting id="betanotify" type="bool" label="30012" default="true" enable="eq(-8,true)"/>
     </category>
 
-    <category label="Synchronisation films">
-        <setting id="sync_movies_now" type="action" label="Démarrer/Reprendre la synchro des films" action="RunScript(service.betaseries.com,?action=sync_movies)"/>
-        <setting id="full_sync_movies_now" type="action" label="Resynchroniser tous les films" action="RunScript(service.betaseries.com,?action=full_sync_movies)"/>
-        <setting id="stop_sync_movies_now" type="action" label="Arrêter la synchro des films en cours" action="RunScript(service.betaseries.com,?action=stop_sync_movies)"/>
+    <category label="30240">
+        <setting id="sync_movies_now" type="action" label="30241" action="RunScript(service.betaseries.com,?action=sync_movies)"/>
+        <setting id="full_sync_movies_now" type="action" label="30242" action="RunScript(service.betaseries.com,?action=full_sync_movies)"/>
+        <setting id="stop_sync_movies_now" type="action" label="30243" action="RunScript(service.betaseries.com,?action=stop_sync_movies)"/>
     </category>
 
-    <category label="Synchronisation séries">
-        <setting id="sync_episodes_now" type="action" label="Démarrer/Reprendre la synchro des séries/épisodes" action="RunScript(service.betaseries.com,?action=sync_episodes)"/>
-        <setting id="full_sync_episodes_now" type="action" label="Resynchroniser toutes les séries" action="RunScript(service.betaseries.com,?action=full_sync_episodes)"/>
-        <setting id="stop_sync_episodes_now" type="action" label="Arrêter la synchro des séries en cours" action="RunScript(service.betaseries.com,?action=stop_sync_episodes)"/>
+    <category label="30244">
+        <setting id="sync_episodes_now" type="action" label="30245" action="RunScript(service.betaseries.com,?action=sync_episodes)"/>
+        <setting id="full_sync_episodes_now" type="action" label="30246" action="RunScript(service.betaseries.com,?action=full_sync_episodes)"/>
+        <setting id="stop_sync_episodes_now" type="action" label="30247" action="RunScript(service.betaseries.com,?action=stop_sync_episodes)"/>
     </category>
 </settings>
