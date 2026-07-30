@@ -1,7 +1,8 @@
 x update kodi v21 et betaseries v3.0
 
 
-... sync globale serie et films
+x  sync globale serie et films
+attention pas la date de vu
 
 
 livrable comme repository officiel

@@ -1,7 +1,7 @@
 # XBMC Media Center language file
 # Addon Name: BetaSeries Service
 # Addon id: service.betaseries
-# Addon Provider: skylex
+# Addon Provider: dijidev42 - fork from skylex
 msgid ""
 msgstr ""
 "Project-Id-Version: XBMC Addons\n"
@@ -9,11 +9,11 @@ msgstr ""
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: XBMC Translation Team\n"
-"Language-Team: French (http://www.transifex.com/projects/p/xbmc-addons/language/fr/)\n"
+"Language-Team: French\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: fr\n"
+"Language: fr_fr\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 msgctxt "#30000"
@@ -45,12 +45,12 @@ msgid "Mark previous episodes as watched"
 msgstr "Marquer les épisodes précédents comme vus"
 
 msgctxt "#30009"
-msgid "Update status when marking as viewed in XBMC"
-msgstr "Mettre à jour quand l'épisode est marqué comme vu dans XBMC"
+msgid "Update status when marking as viewed in Kodi"
+msgstr "Mettre à jour quand l'épisode est marqué comme vu dans Kodi"
 
 msgctxt "#30010"
-msgid "Update status when marking as not viewed in XBMC"
-msgstr "Mettre à jour quand l'épisode est marqué comme non vu dans XBMC"
+msgid "Update status when marking as not viewed in Kodi"
+msgstr "Mettre à jour quand l'épisode est marqué comme non vu dans Kodi"
 
 msgctxt "#30011"
 msgid "Automatically add new watched shows"
@@ -58,7 +58,7 @@ msgstr "Ajouter automatiquement les nouvelles séries regardées"
 
 msgctxt "#30012"
 msgid "Notify on screen when marking episodes"
-msgstr "Notification visuelle lors du marquage d'un épisode"
+msgstr "Notification visuelle lors du marquage"
 
 msgctxt "#30013"
 msgid "Show added : "
@@ -82,7 +82,7 @@ msgstr "Film marqué comme non vu !"
 
 msgctxt "#30101"
 msgid "Episode marked as downloaded !"
-msgstr "Episode marqué récupéré !"
+msgstr "Episode marqué comme téléchargé !"
 
 msgctxt "#32001"
 msgid "Authentication error"
@@ -111,3 +111,95 @@ msgstr "Erreur lors du marquage de l'épisode !"
 msgctxt "#32007"
 msgid "Failed to mark movie !"
 msgstr "Erreur lors du marquage du film !"
+
+msgctxt "#30200"
+msgid "BetaSeries update in progress..."
+msgstr "Mise à jour BetaSeries en cours..."
+
+msgctxt "#30201"
+msgid "Shows synchronization in progress..."
+msgstr "Synchronisation des séries en cours..."
+
+msgctxt "#30202"
+msgid "Movies synchronization in progress..."
+msgstr "Synchronisation des films en cours..."
+
+msgctxt "#30203"
+msgid "Initializing..."
+msgstr "Initialisation..."
+
+msgctxt "#30204"
+msgid "Preparing..."
+msgstr "Préparation..."
+
+msgctxt "#30205"
+msgid "Episodes"
+msgstr "Episodes"
+
+msgctxt "#30206"
+msgid "Movies"
+msgstr "Films"
+
+msgctxt "#30207"
+msgid "Synchronized: %d | Skipped: %d"
+msgstr "Synchronisés : %d | Ignorés : %d"
+
+msgctxt "#30208"
+msgid "Unknown show"
+msgstr "Série inconnue"
+
+msgctxt "#30209"
+msgid "Unknown movie"
+msgstr "Film inconnu"
+
+msgctxt "#30210"
+msgid "Shows synchronization interrupted"
+msgstr "Synchronisation des séries interrompue"
+
+msgctxt "#30211"
+msgid "Movies synchronization interrupted"
+msgstr "Synchronisation des films interrompue"
+
+msgctxt "#30212"
+msgid "Episodes: %d synchronized, %d skipped, total %d"
+msgstr "Episodes : %d synchronisé(s), %d ignoré(s), total %d"
+
+msgctxt "#30213"
+msgid "Movies: %d synchronized, %d skipped, total %d"
+msgstr "Films : %d synchronisé(s), %d ignoré(s), total %d"
+
+msgctxt "#30214"
+msgid "Stop requested for shows synchronization"
+msgstr "Demande d'arrêt envoyée pour la synchro des séries"
+
+msgctxt "#30215"
+msgid "Stop requested for movies synchronization"
+msgstr "Demande d'arrêt envoyée pour la synchro des films"
+
+msgctxt "#30216"
+msgid "Unknown action: %s"
+msgstr "Action inconnue : %s"
+
+msgctxt "#30217"
+msgid "Sync error: %s"
+msgstr "Erreur de synchro : %s"
+
+msgctxt "#30218"
+msgid "%d episode(s) marked as watched"
+msgstr "%d épisode(s) marqué(s) comme vu(s)"
+
+msgctxt "#30219"
+msgid "%d episode(s) marked as not watched"
+msgstr "%d épisode(s) marqué(s) comme non vu(s)"
+
+msgctxt "#30220"
+msgid "%d episode(s) marked as downloaded"
+msgstr "%d épisode(s) marqué(s) comme téléchargé(s)"
+
+msgctxt "#30221"
+msgid "%d movie(s) marked as watched"
+msgstr "%d film(s) marqué(s) comme vu(s)"
+
+msgctxt "#30222"
+msgid "%d movie(s) marked as not watched"
+msgstr "%d film(s) marqué(s) comme non vu(s)"

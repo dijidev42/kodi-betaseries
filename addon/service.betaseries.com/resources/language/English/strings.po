@@ -1,7 +1,7 @@
 # XBMC Media Center language file
 # Addon Name: BetaSeries Service
 # Addon id: service.betaseries
-# Addon Provider: skylex
+# Addon Provider: dijidev42 - fork from skylex
 msgid ""
 msgstr ""
 "Project-Id-Version: XBMC Addons\n"
@@ -9,109 +9,197 @@ msgstr ""
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: XBMC Translation Team\n"
-"Language-Team: English (http://www.transifex.com/projects/p/xbmc-addons/language/en/)\n"
+"Language-Team: English\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: en\n"
+"Language: en_gb\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgctxt "#30000"
 msgid "General"
-msgstr ""
-
-#empty strings from id 30001 to 30002
+msgstr "General"
 
 msgctxt "#30003"
 msgid "Successfully loaded !"
-msgstr ""
+msgstr "Loaded successfully!"
 
 msgctxt "#30004"
 msgid "Activate BetaSeries.com service"
-msgstr ""
+msgstr "Enable BetaSeries.com service"
 
 msgctxt "#30005"
 msgid "Mark as viewed only when watched for the first time"
-msgstr ""
+msgstr "Mark as watched only after the first play"
 
 msgctxt "#30006"
 msgid "BetaSeries.com username"
-msgstr ""
+msgstr "BetaSeries.com username"
 
 msgctxt "#30007"
 msgid "BetaSeries.com password"
-msgstr ""
+msgstr "BetaSeries.com password"
 
 msgctxt "#30008"
 msgid "Mark previous episodes as watched"
-msgstr ""
+msgstr "Mark previous episodes as watched"
 
 msgctxt "#30009"
-msgid "Update status when marking as viewed in XBMC"
-msgstr ""
+msgid "Update status when marking as viewed in Kodi"
+msgstr "Update status when marking as watched in Kodi"
 
 msgctxt "#30010"
-msgid "Update status when marking as not viewed in XBMC"
-msgstr ""
+msgid "Update status when marking as not viewed in Kodi"
+msgstr "Update status when marking as not watched in Kodi"
 
 msgctxt "#30011"
 msgid "Automatically add new watched shows"
-msgstr ""
+msgstr "Automatically add newly watched shows"
 
 msgctxt "#30012"
 msgid "Notify on screen when marking episodes"
-msgstr ""
+msgstr "Show on-screen notifications when marking"
 
 msgctxt "#30013"
 msgid "Show added : "
-msgstr ""
+msgstr "Show added: "
 
 msgctxt "#30014"
 msgid "Episode marked as watched !"
-msgstr ""
+msgstr "Episode marked as watched!"
 
 msgctxt "#30015"
 msgid "Episode marked as not watched !"
-msgstr ""
+msgstr "Episode marked as not watched!"
 
 msgctxt "#30016"
 msgid "Movie marked as watched !"
-msgstr ""
+msgstr "Movie marked as watched!"
 
 msgctxt "#30017"
 msgid "Movie marked as not watched !"
-msgstr ""
-
-#empty strings from id 30018 to 32000
+msgstr "Movie marked as not watched!"
 
 msgctxt "#30101"
 msgid "Episode marked as downloaded !"
-msgstr ""
+msgstr "Episode marked as downloaded!"
 
 msgctxt "#32001"
 msgid "Authentication error"
-msgstr ""
+msgstr "Authentication error"
 
 msgctxt "#32002"
 msgid "Please update the add-on"
-msgstr ""
+msgstr "Please update the add-on"
 
 msgctxt "#32003"
 msgid "Failed to connect to the site"
-msgstr ""
+msgstr "Failed to connect to the site"
 
 msgctxt "#32004"
 msgid "Login or password incorrect"
-msgstr ""
+msgstr "Login or password incorrect"
 
 msgctxt "#32005"
 msgid "Failed to add show : "
-msgstr ""
+msgstr "Failed to add show: "
 
 msgctxt "#32006"
 msgid "Failed to mark episode !"
-msgstr ""
+msgstr "Failed to mark episode!"
 
 msgctxt "#32007"
 msgid "Failed to mark movie !"
-msgstr ""
+msgstr "Failed to mark movie!"
+
+msgctxt "#30200"
+msgid "BetaSeries update in progress..."
+msgstr "BetaSeries update in progress..."
+
+msgctxt "#30201"
+msgid "Shows synchronization in progress..."
+msgstr "Shows synchronization in progress..."
+
+msgctxt "#30202"
+msgid "Movies synchronization in progress..."
+msgstr "Movies synchronization in progress..."
+
+msgctxt "#30203"
+msgid "Initializing..."
+msgstr "Initializing..."
+
+msgctxt "#30204"
+msgid "Preparing..."
+msgstr "Preparing..."
+
+msgctxt "#30205"
+msgid "Episodes"
+msgstr "Episodes"
+
+msgctxt "#30206"
+msgid "Movies"
+msgstr "Movies"
+
+msgctxt "#30207"
+msgid "Synchronized: %d | Skipped: %d"
+msgstr "Synchronized: %d | Skipped: %d"
+
+msgctxt "#30208"
+msgid "Unknown show"
+msgstr "Unknown show"
+
+msgctxt "#30209"
+msgid "Unknown movie"
+msgstr "Unknown movie"
+
+msgctxt "#30210"
+msgid "Shows synchronization interrupted"
+msgstr "Shows synchronization interrupted"
+
+msgctxt "#30211"
+msgid "Movies synchronization interrupted"
+msgstr "Movies synchronization interrupted"
+
+msgctxt "#30212"
+msgid "Episodes: %d synchronized, %d skipped, total %d"
+msgstr "Episodes: %d synchronized, %d skipped, total %d"
+
+msgctxt "#30213"
+msgid "Movies: %d synchronized, %d skipped, total %d"
+msgstr "Movies: %d synchronized, %d skipped, total %d"
+
+msgctxt "#30214"
+msgid "Stop requested for shows synchronization"
+msgstr "Stop requested for shows synchronization"
+
+msgctxt "#30215"
+msgid "Stop requested for movies synchronization"
+msgstr "Stop requested for movies synchronization"
+
+msgctxt "#30216"
+msgid "Unknown action: %s"
+msgstr "Unknown action: %s"
+
+msgctxt "#30217"
+msgid "Sync error: %s"
+msgstr "Sync error: %s"
+
+msgctxt "#30218"
+msgid "%d episode(s) marked as watched"
+msgstr "%d episode(s) marked as watched"
+
+msgctxt "#30219"
+msgid "%d episode(s) marked as not watched"
+msgstr "%d episode(s) marked as not watched"
+
+msgctxt "#30220"
+msgid "%d episode(s) marked as downloaded"
+msgstr "%d episode(s) marked as downloaded"
+
+msgctxt "#30221"
+msgid "%d movie(s) marked as watched"
+msgstr "%d movie(s) marked as watched"
+
+msgctxt "#30222"
+msgid "%d movie(s) marked as not watched"
+msgstr "%d movie(s) marked as not watched"
