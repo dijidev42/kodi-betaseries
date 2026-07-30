@@ -2,7 +2,7 @@
 Ψ forked from skylex/xbmc-betaseries
 
 🚧 Works with Kodi v21.x and Betaseries API v3.0
-
+✅ Tested on Kodi v21.2
 
 This is a Kodi repository for a few addons:
 
