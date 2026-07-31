@@ -44,10 +44,14 @@ __profile__ = xbmcvfs.translatePath(__addon__.getAddonInfo('profile'))
 
 socket.setdefaulttimeout(10)
 
-_notification_batch = {}
-_notification_batch_last_ts = 0
-_mass_update_started = False
-_mass_update_started_ts = 0
+_notification_items = {}
+_notification_order = []
+_notification_last_ts = 0
+_notification_bulk_mode = False
+_notification_bulk_started_ts = 0
+_notification_started_notice_shown = False
+_notification_window_seconds = 1.5
+_notification_bulk_threshold = 3
 
 EPISODES_INDEX_FILE = os.path.join(__profile__, 'episodes_sync_index.json')
 MOVIES_INDEX_FILE = os.path.join(__profile__, 'movies_sync_index.json')
@@ -105,66 +109,161 @@ def log_api_error(item, context, data):
         ), xbmc.LOGERROR)
 
 
-def queue_batched_notification(media_type, action):
-    global _notification_batch, _notification_batch_last_ts
-    key = '%s_%s' % (media_type, action)
-    _notification_batch[key] = _notification_batch.get(key, 0) + 1
-    _notification_batch_last_ts = time.time()
+def _notification_item_key(item):
+    if item[6] == 'episode':
+        return 'episode_%s' % str(item[1])
+    return 'movie_%s' % str(item[0])
+
+
+def _notification_action_for_item(item):
+    if item[6] == 'movie':
+        return 'unwatched' if item[2] == 0 else 'watched'
+    if item[2] == 0:
+        return 'unwatched'
+    if item[2] == -1:
+        return 'downloaded'
+    return 'watched'
+
+
+def _queue_notification_item(item):
+    global _notification_items, _notification_order, _notification_last_ts, _notification_bulk_mode
+
+    key = _notification_item_key(item)
+    if key not in _notification_items:
+        _notification_order.append(key)
+
+    _notification_items[key] = {
+        'key': key,
+        'media_type': item[6],
+        'action': _notification_action_for_item(item),
+        'label': format_item_label(item),
+        'ts': time.time()
+    }
+    _notification_last_ts = time.time()
+
+    if len(_notification_items) >= _notification_bulk_threshold:
+        _notification_bulk_mode = True
 
 
 def start_mass_update_notification(prefix=None):
-    global _mass_update_started, _mass_update_started_ts
-    now = time.time()
-    if _mass_update_started and (now - _mass_update_started_ts) < 10:
-        return
-    _mass_update_started = True
-    _mass_update_started_ts = now
-    notify(prefix or 30200, 1500)
+    global _notification_bulk_mode, _notification_bulk_started_ts, _notification_started_notice_shown
+    _notification_bulk_mode = True
+    _notification_bulk_started_ts = time.time()
+    if not _notification_started_notice_shown:
+        notify(prefix or 30200, 1200)
+        _notification_started_notice_shown = True
+
+
+def _notification_message(media_type, action, count):
+    key = '%s_%s' % (media_type, action)
+    if key == 'episode_watched':
+        return (__language__(30218) % count) if count > 1 else __language__(30014)
+    if key == 'episode_unwatched':
+        return (__language__(30219) % count) if count > 1 else __language__(30015)
+    if key == 'episode_downloaded':
+        return (__language__(30220) % count) if count > 1 else __language__(30101)
+    if key == 'movie_watched':
+        return (__language__(30221) % count) if count > 1 else __language__(30016)
+    if key == 'movie_unwatched':
+        return (__language__(30222) % count) if count > 1 else __language__(30017)
+    return None
+
+
+def _single_notification_message(event):
+    if event['media_type'] == 'episode':
+        if event['action'] == 'watched':
+            return 'Épisode mis à jour : vu'
+        if event['action'] == 'unwatched':
+            return 'Épisode mis à jour : non vu'
+        if event['action'] == 'downloaded':
+            return 'Épisode mis à jour : téléchargé'
+    elif event['media_type'] == 'movie':
+        if event['action'] == 'watched':
+            return 'Film mis à jour : vu'
+        if event['action'] == 'unwatched':
+            return 'Film mis à jour : non vu'
+    return None
+
+
+def _reset_notifications():
+    global _notification_items, _notification_order, _notification_last_ts
+    global _notification_bulk_mode, _notification_bulk_started_ts, _notification_started_notice_shown
+
+    _notification_items = {}
+    _notification_order = []
+    _notification_last_ts = 0
+    _notification_bulk_mode = False
+    _notification_bulk_started_ts = 0
+    _notification_started_notice_shown = False
+
+
+def _collect_final_notification_events():
+    events = []
+    for key in _notification_order:
+        event = _notification_items.get(key)
+        if event:
+            events.append(event)
+    return events
+
+
+def _group_bulk_events(events):
+    grouped = []
+    for ev in events:
+        if grouped and grouped[-1]['media_type'] == ev['media_type'] and grouped[-1]['action'] == ev['action']:
+            grouped[-1]['count'] += 1
+        else:
+            grouped.append({
+                'media_type': ev['media_type'],
+                'action': ev['action'],
+                'count': 1
+            })
+    return grouped
 
 
 def _flush_batched_notifications(force=False):
-    global _notification_batch, _notification_batch_last_ts
-    global _mass_update_started, _mass_update_started_ts
+    global _notification_last_ts
 
-    if not _notification_batch:
+    if not _notification_items:
         return
 
     now = time.time()
-    if not force and (now - _notification_batch_last_ts) < 1.5:
+    if not force and (now - _notification_last_ts) < _notification_window_seconds:
         return
 
-    ordered_keys = [
-        'episode_watched',
-        'episode_unwatched',
-        'episode_downloaded',
-        'movie_watched',
-        'movie_unwatched',
-    ]
+    events = _collect_final_notification_events()
+    if not events:
+        _reset_notifications()
+        return
 
-    for key in ordered_keys:
-        count = _notification_batch.get(key, 0)
-        if not count:
-            continue
+    if not _notification_bulk_mode and len(events) == 1:
+        msg = _single_notification_message(events[0])
+        if msg:
+            notify(msg, 1200)
+        _reset_notifications()
+        return
 
-        if key == 'episode_watched':
-            msg = __language__(30218) % count
-        elif key == 'episode_unwatched':
-            msg = __language__(30219) % count
-        elif key == 'episode_downloaded':
-            msg = __language__(30220) % count
-        elif key == 'movie_watched':
-            msg = __language__(30221) % count
-        elif key == 'movie_unwatched':
-            msg = __language__(30222) % count
-        else:
-            continue
+    grouped = _group_bulk_events(events)
+    if len(grouped) > 2:
+        summary = {}
+        order = []
+        for g in grouped:
+            key = '%s_%s' % (g['media_type'], g['action'])
+            if key not in summary:
+                summary[key] = {
+                    'media_type': g['media_type'],
+                    'action': g['action'],
+                    'count': 0
+                }
+                order.append(key)
+            summary[key]['count'] += g['count']
+        grouped = [summary[key] for key in order[:2]]
 
-        notify(msg, 1500)
+    for g in grouped:
+        msg = _notification_message(g['media_type'], g['action'], g['count'])
+        if msg:
+            notify(msg, 1500)
 
-    _notification_batch = {}
-    _notification_batch_last_ts = 0
-    _mass_update_started = False
-    _mass_update_started_ts = 0
+    _reset_notifications()
 
 
 def set_user_agent():
@@ -524,18 +623,7 @@ class BetaSeriesAgent:
     def _queue_success_notification(self, item):
         if not self.service[15]:
             return
-        total_before = sum(_notification_batch.values())
-        if total_before == 0:
-            start_mass_update_notification()
-        if item[6] == 'movie':
-            queue_batched_notification('movie', 'unwatched' if item[2] == 0 else 'watched')
-        else:
-            if item[2] == 0:
-                queue_batched_notification('episode', 'unwatched')
-            elif item[2] == -1:
-                queue_batched_notification('episode', 'downloaded')
-            else:
-                queue_batched_notification('episode', 'watched')
+        _queue_notification_item(item)
 
     def mark_item(self, item, force=True):
         service = self.service
@@ -869,6 +957,7 @@ class ManualSync:
         def entry_key(ep):
             return 'episodeid_%s' % str(ep.get('episodeid'))
 
+        start_mass_update_notification(__language__(30201))
         start_index = self._resume_position(episodes, progress_state.get('last_processed_key'), entry_key)
         entries = episodes[start_index:]
 
@@ -950,6 +1039,7 @@ class ManualSync:
         def entry_key(mv):
             return 'movieid_%s' % str(mv.get('movieid'))
 
+        start_mass_update_notification(__language__(30202))
         start_index = self._resume_position(movies, progress_state.get('last_processed_key'), entry_key)
         entries = movies[start_index:]
 
