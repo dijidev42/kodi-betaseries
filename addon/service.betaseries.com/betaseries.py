@@ -1228,8 +1228,35 @@ class Main:
             create_stop_flag(STOP_MOVIES_FILE)
             notify(30215, 2000)
             return
+        if action == 'mark_downloaded':
+            self.mark_focused_item_downloaded()
+            return
 
         notify(__language__(30216) % action, 1500)
+
+    def mark_focused_item_downloaded(self):
+        item_id_str = xbmc.getInfoLabel('Container.ListItem(0).DBID')
+        item_type = xbmc.getInfoLabel('Container.ListItem(0).DBType')
+        
+        if not item_id_str or not item_id_str.isdigit():
+            notify("Aucun élément sélectionné", 1000)
+            return
+
+        item_id = int(item_id_str)
+
+        if item_type == 'episode':
+            item = self.resolver.get_episode_info(item_id, playcount=0, playstatus=False)
+            if item:
+                item[2] = -1  # Force l'état à téléchargé / récupéré
+                if self.agent.mark_item(item, force=True):
+                    notify("Épisode marqué comme récupéré", 1200)
+                else:
+                    notify("Erreur lors de la synchronisation", 1200)
+        elif item_type == 'movie':
+            item = self.resolver.get_movie_info(item_id, playcount=0, playstatus=False)
+            if item:
+                if self.agent.mark_item(item, force=True):
+                    notify("Film mis à jour", 1200)
 
     def _reload_settings(self):
         self.agent = BetaSeriesAgent()
