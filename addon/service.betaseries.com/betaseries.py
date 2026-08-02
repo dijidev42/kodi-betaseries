@@ -1123,8 +1123,56 @@ class MyPlayer(xbmc.Monitor):
         except Exception:
             return {}, {}
 
+    def sync_recently_added(self):
+        try:
+            log('Synchronisation des nouveautés issues du scraping avec états (récupéré/lu/non lu)...')
+            
+            # Épisodes récents
+            episodes_data = kodi_jsonrpc(
+                'VideoLibrary.GetRecentlyAddedEpisodes',
+                {'properties': ['playcount', 'showtitle', 'season', 'episode'], 'limits': {'start': 0, 'end': 250}}
+            )
+            for ep in episodes_data.get('result', {}).get('episodes', []):
+                episodeid = ep.get('episodeid')
+                playcount = int(ep.get('playcount') or 0)
+                
+                # Récupère les infos de l'épisode (playstatus est basé sur playcount > 0)
+                playstatus = (playcount > 0)
+                episode = self.resolver.get_episode_info(episodeid, playcount, playstatus)
+                
+                if episode:
+                    # 1. Marquer d'abord l'épisode comme récupéré/téléchargé sur BetaSeries (état -1)
+                    episode[2] = -1 
+                    self.agent.mark_item(episode, force=False)
+                    
+                    # 2. Si l'épisode a déjà été lu dans Kodi (playcount > 0), mettre à jour l'état à lu (1)
+                    if playcount > 0:
+                        episode[2] = 1
+                        self.agent.mark_item(episode, force=False)
+
+            # Films récents (les films gèrent l'état vu / non vu)
+            movies_data = kodi_jsonrpc(
+                'VideoLibrary.GetRecentlyAddedMovies',
+                {'properties': ['playcount', 'title', 'originaltitle'], 'limits': {'start': 0, 'end': 15}}
+            )
+            for mv in movies_data.get('result', {}).get('movies', []):
+                movieid = mv.get('movieid')
+                playcount = int(mv.get('playcount') or 0)
+                movie = self.resolver.get_movie_info(movieid, playcount, (playcount > 0))
+                if movie:
+                    self.agent.mark_item(movie, force=False)
+
+            _flush_batched_notifications(force=True)
+        except Exception as e:
+            log('Erreur lors de la synchro post-scraping : %s' % repr(e), xbmc.LOGERROR)
+    
     def onNotification(self, sender, method, data):
         if sender != 'xbmc':
+            return
+
+        if method == 'VideoLibrary.OnScanFinished':
+            log('Fin du scan de la médiathèque détectée.')
+            self.sync_recently_added()
             return
 
         if method == 'Player.OnPlay':
@@ -1177,7 +1225,6 @@ class MyPlayer(xbmc.Monitor):
 
             self.Play = False
             _flush_batched_notifications(force=False)
-
 
 class MyMonitor(xbmc.Monitor):
     def __init__(self, *args, **kwargs):
