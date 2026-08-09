@@ -13,14 +13,14 @@
     </category>
 
     <category label="30240">
-        <setting id="sync_movies_now" type="action" label="30241" action="RunScript(service.betaseries.com,?action=sync_movies)"/>
-        <setting id="full_sync_movies_now" type="action" label="30242" action="RunScript(service.betaseries.com,?action=full_sync_movies)"/>
-        <setting id="stop_sync_movies_now" type="action" label="30243" action="RunScript(service.betaseries.com,?action=stop_sync_movies)"/>
+        <setting id="sync_movies_now" type="action" label="30241" action="RunScript(service.gammaseries,?action=sync_movies)"/>
+        <setting id="full_sync_movies_now" type="action" label="30242" action="RunScript(service.gammaseries,?action=full_sync_movies)"/>
+        <setting id="stop_sync_movies_now" type="action" label="30243" action="RunScript(service.gammaseries,?action=stop_sync_movies)"/>
     </category>
 
     <category label="30244">
-        <setting id="sync_episodes_now" type="action" label="30245" action="RunScript(service.betaseries.com,?action=sync_episodes)"/>
-        <setting id="full_sync_episodes_now" type="action" label="30246" action="RunScript(service.betaseries.com,?action=full_sync_episodes)"/>
-        <setting id="stop_sync_episodes_now" type="action" label="30247" action="RunScript(service.betaseries.com,?action=stop_sync_episodes)"/>
+        <setting id="sync_episodes_now" type="action" label="30245" action="RunScript(service.gammaseries,?action=sync_episodes)"/>
+        <setting id="full_sync_episodes_now" type="action" label="30246" action="RunScript(service.gammaseries,?action=full_sync_episodes)"/>
+        <setting id="stop_sync_episodes_now" type="action" label="30247" action="RunScript(service.gammaseries,?action=stop_sync_episodes)"/>
     </category>
 </settings>

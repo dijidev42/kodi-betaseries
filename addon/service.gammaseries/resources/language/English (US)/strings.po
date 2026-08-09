@@ -1,5 +1,5 @@
 # XBMC Media Center language file
-# Addon Name: BetaSeries Service
+# Addon Name: GammaSeries
 # Addon id: service.betaseries
 # Addon Provider: dijidev42 - fork from skylex
 msgid ""

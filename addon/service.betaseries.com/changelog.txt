@@ -1,5 +1,0 @@
-1.1.0
-- added library global sync Kodi -> Betaseries
-
-1.0.0
-- initial release working with Kodi v21 and Betaseries API v3.0

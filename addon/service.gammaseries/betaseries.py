@@ -609,6 +609,9 @@ class BetaSeriesAgent:
             urldata = {'v': self.apiver, 'key': service[2], 'token': service[6], 'id': item[0], 'state': item[2]}
             method = 'POST'
             act = 'not watched' if item[2] == 0 else 'watched'
+            watch_date = item[7] if len(item) > 7 else None
+            if item[2] != 0 and watch_date:
+                urldata['date'] = watch_date
             return url, urldata, method, act
 
         urldata = {'v': self.apiver, 'key': service[2], 'token': service[6], 'thetvdb_id': item[1]}
@@ -618,7 +621,40 @@ class BetaSeriesAgent:
             return service[1] + '/episodes/watched', urldata, 'DELETE', 'not watched'
         if item[2] == -1:
             return service[1] + '/episodes/downloaded', urldata, 'POST', 'downloaded'
+        watch_date = item[7] if len(item) > 7 else None
+        if watch_date:
+            urldata['date'] = watch_date
         return service[1] + '/episodes/watched', urldata, 'POST', 'watched'
+
+    def correct_episode_watch_date(self, item):
+        service = self.service
+        watch_date = item[7] if len(item) > 7 else None
+        bs_episode_id = item[8] if len(item) > 8 else None
+        if not watch_date or not bs_episode_id:
+            return False
+
+        url = service[1] + '/episodes/watch_date'
+        urldata = {
+            'v': self.apiver, 'key': service[2], 'token': service[6],
+            'id': bs_episode_id, 'new_date': watch_date
+        }
+        try:
+            data = get_json(url, urldata, 'POST')
+        except Exception:
+            self.service = self._service_fail(service, False)
+            log('watch date correction failed for %s' % format_item_label(item), xbmc.LOGERROR)
+            return False
+
+        errors = data.get('errors')
+        if errors:
+            code = errors[0]['code']
+            if code == 2001:
+                service[6] = ''
+            log_api_error(item, 'WatchDate', data)
+            return False
+
+        log('%s watch date corrected to %s' % (format_item_label(item), watch_date))
+        return True
 
     def _queue_success_notification(self, item):
         if not self.service[15]:
@@ -661,6 +697,33 @@ class BetaSeriesAgent:
                 self._queue_success_notification(item)
                 _flush_batched_notifications(force=False)
                 return True
+
+            if item[6] == 'episode' and item[2] not in (0, -1) and self.correct_episode_watch_date(item):
+                log('episode already watched on BetaSeries, watch date corrected instead: %s' % format_item_label(item), xbmc.LOGDEBUG)
+                self._queue_success_notification(item)
+                _flush_batched_notifications(force=False)
+                return True
+
+            if item[6] == 'movie' and 'date' in urldata:
+                log_api_error(item, 'Sync (with date, retrying without)', data)
+                retry_urldata = dict(urldata)
+                del retry_urldata['date']
+                try:
+                    retry_data = get_json(url, retry_urldata, method)
+                except Exception:
+                    self.service = self._service_fail(service, False)
+                    log('sync retry (without date) failed for %s' % format_item_label(item), xbmc.LOGERROR)
+                    return False
+
+                retry_errors = retry_data.get('errors')
+                if not retry_errors:
+                    self._queue_success_notification(item)
+                    _flush_batched_notifications(force=False)
+                    log('%s marked as %s (date param unsupported by API, ignored)' % (format_item_label(item), act))
+                    return True
+
+                log_api_error(item, 'Sync', retry_data)
+                return False
 
             log_api_error(item, 'Sync', data)
             return False
@@ -753,7 +816,7 @@ class KodiLibraryResolver:
             return best.get('thetvdb_id')
         return ''
 
-    def _search_episode_tvdbid(self, tvdbid, season, episode_num):
+    def _search_episode_ids(self, tvdbid, season, episode_num):
         url = self.service[1] + '/shows/episodes'
         query = '?v=2.2&key=%s&thetvdb_id=%s&season=%s&episode=%s' % (
             self.service[2], str(tvdbid), str(season), str(episode_num)
@@ -761,8 +824,13 @@ class KodiLibraryResolver:
         data = get_json(url + query, '', 'GET')
         episodes = data.get('episodes', [])
         if episodes:
-            return episodes[0].get('thetvdb_id')
-        return ''
+            return episodes[0].get('id'), episodes[0].get('thetvdb_id')
+        return '', ''
+
+    def _norm_watch_date(self, lastplayed):
+        if not lastplayed or lastplayed == '1601-01-01 00:00:00':
+            return None
+        return lastplayed
 
     def get_episode_status_text(self, episodeid, playcount):
         try:
@@ -787,16 +855,18 @@ class KodiLibraryResolver:
         show_year = None
         tvdbid = ''
         tvdbepid = ''
+        lastplayed = ''
 
         try:
             ep = kodi_jsonrpc(
                 'VideoLibrary.GetEpisodeDetails',
-                {'episodeid': episodeid, 'properties': ['tvshowid', 'showtitle', 'season', 'episode', 'uniqueid']}
+                {'episodeid': episodeid, 'properties': ['tvshowid', 'showtitle', 'season', 'episode', 'uniqueid', 'lastplayed']}
             )['result']['episodedetails']
             showtitle = ep.get('showtitle', '')
             season = ep.get('season')
             episode_num = ep.get('episode')
             tvshowid = ep.get('tvshowid')
+            lastplayed = ep.get('lastplayed') or ''
 
             if tvshowid is not None:
                 show = kodi_jsonrpc(
@@ -827,7 +897,7 @@ class KodiLibraryResolver:
             return False
 
         try:
-            tvdbepid = self._search_episode_tvdbid(tvdbid, season, episode_num)
+            bs_episode_id, tvdbepid = self._search_episode_ids(tvdbid, season, episode_num)
         except Exception:
             log("could not fetch episode's thetvdb_id for %s S%02dE%02d" % (
                 showtitle, int(season), int(episode_num)
@@ -841,7 +911,11 @@ class KodiLibraryResolver:
             return False
 
         epname = str(season) + 'x' + str(episode_num)
-        return [int(tvdbid), int(tvdbepid), int(playcount), bool(playstatus), showtitle, epname, 'episode']
+        watch_date = self._norm_watch_date(lastplayed)
+        return [
+            int(tvdbid), int(tvdbepid), int(playcount), bool(playstatus), showtitle, epname, 'episode',
+            watch_date, bs_episode_id or None
+        ]
 
     def _lookup_movie_by_ids(self, tmdbid, imdbid):
         url = self.service[1] + '/movies/movie'
@@ -883,7 +957,7 @@ class KodiLibraryResolver:
         try:
             movie = kodi_jsonrpc(
                 'VideoLibrary.GetMovieDetails',
-                {'movieid': movieid, 'properties': ['title', 'originaltitle', 'imdbnumber', 'uniqueid', 'year']}
+                {'movieid': movieid, 'properties': ['title', 'originaltitle', 'imdbnumber', 'uniqueid', 'year', 'lastplayed']}
             )['result']['moviedetails']
         except Exception:
             log("could not get movie details", xbmc.LOGERROR)
@@ -894,6 +968,7 @@ class KodiLibraryResolver:
         tmdbid = uniqueid.get('tmdb') or ''
         moviename = movie.get('originaltitle') or movie.get('title') or ''
         movieyear = movie.get('year')
+        watch_date = self._norm_watch_date(movie.get('lastplayed') or '')
 
         if not moviename:
             return False
@@ -901,7 +976,7 @@ class KodiLibraryResolver:
         if tmdbid or imdbid:
             try:
                 movie_bs_id, movie_tmdb_id = self._lookup_movie_by_ids(tmdbid, imdbid)
-                return [int(movie_bs_id), int(movie_tmdb_id), int(playcount), bool(playstatus), '', moviename, 'movie']
+                return [int(movie_bs_id), int(movie_tmdb_id), int(playcount), bool(playstatus), '', moviename, 'movie', watch_date]
             except Exception:
                 log("direct movie lookup failed for %s, fallback to search" % moviename, xbmc.LOGERROR)
 
@@ -911,7 +986,7 @@ class KodiLibraryResolver:
                 log("no BetaSeries movie match for '%s' (%s)" % (moviename, str(movieyear)), xbmc.LOGERROR)
                 return False
 
-            return [int(movie_bs_id), int(movie_tmdb_id or 0), int(playcount), bool(playstatus), '', moviename, 'movie']
+            return [int(movie_bs_id), int(movie_tmdb_id or 0), int(playcount), bool(playstatus), '', moviename, 'movie', watch_date]
         except Exception:
             log("could not fetch movie BetaSeries id : %s" % moviename, xbmc.LOGERROR)
             return False
@@ -1001,18 +1076,43 @@ class ManualSync:
 
                 key = str(item[1])
                 state = item[2]
+                watch_date = item[7] if len(item) > 7 else None
+
+                if not index.get(key, {}).get('downloaded'):
+                    downloaded_item = list(item)
+                    downloaded_item[2] = -1
+                    if self.agent.mark_item(downloaded_item, force=True):
+                        updated += 1
+                        new_index[key] = dict(new_index.get(key, index.get(key, {})))
+                        new_index[key]['downloaded'] = True
+                        save_index(EPISODES_INDEX_FILE, new_index)
+                    else:
+                        errors_count += 1
+
                 if key in index and index.get(key, {}).get('state') == state:
-                    skipped += 1
+                    if state == 1 and watch_date and index.get(key, {}).get('date') != watch_date:
+                        if self.agent.correct_episode_watch_date(item):
+                            updated += 1
+                            new_index[key] = dict(new_index.get(key, index[key]))
+                            new_index[key]['date'] = watch_date
+                            new_index[key]['ts'] = int(time.time())
+                            save_index(EPISODES_INDEX_FILE, new_index)
+                        else:
+                            errors_count += 1
+                    else:
+                        skipped += 1
                     continue
 
                 if self.agent.mark_item(item, force=True):
                     updated += 1
-                    new_index[key] = {
+                    new_index[key] = dict(new_index.get(key, {}))
+                    new_index[key].update({
                         'state': state,
                         'ts': int(time.time()),
                         'label': item[5],
-                        'show': item[4]
-                    }
+                        'show': item[4],
+                        'date': watch_date
+                    })
                     save_index(EPISODES_INDEX_FILE, new_index)
                 else:
                     errors_count += 1

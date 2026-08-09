@@ -1,0 +1,14 @@
+x update kodi v21 et betaseries v3.0
+
+
+x  sync globale serie et films
+x  date de vu synchronisee pour les episodes (watched/watch_date)
+x  date de vu tentee aussi pour les films sur movies/movie (non documente par l'API, fallback sans date si refuse par le serveur - a verifier en reel si accepte)
+x  marquage "recupere" pendant la resync des episodes (pas d'equivalent "downloaded" pour les films cote API BetaSeries)
+x  addon visible dans le menu "Extensions video" de Kodi (default.py -> ouvre les settings)
+x  renommage en GammaSeries (nouvel id service.gammaseries) - desinstaller l'ancien "BetaSeries Agent" depuis Kodi puis reconfigurer login/mdp sur le nouveau
+
+
+livrable comme repository officiel
+
+msg officiel sur forum
