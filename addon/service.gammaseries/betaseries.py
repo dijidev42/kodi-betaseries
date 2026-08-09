@@ -644,7 +644,7 @@ class BetaSeriesAgent:
             ), xbmc.LOGWARNING)
             return False
 
-        url = service[1] + '/episodes/watch_date'
+        url = service[1] + '/episodes/watched_date'
         urldata = {
             'v': self.apiver, 'key': service[2], 'token': service[6],
             'id': bs_episode_id, 'new_date': watch_date
@@ -663,7 +663,7 @@ class BetaSeriesAgent:
                 service[6] = ''
             if code == -1 and 'HTTP 404' in str(errors[0].get('text', '')):
                 self.watch_date_endpoint_unavailable = True
-                log('episodes/watch_date endpoint returned 404 - disabling further attempts for this run', xbmc.LOGWARNING)
+                log('episodes/watched_date endpoint returned 404 - disabling further attempts for this run', xbmc.LOGWARNING)
             log_api_error(item, 'WatchDate', data)
             return False
 
@@ -1398,7 +1398,6 @@ class Main:
         if action == 'mark_downloaded':
             self.mark_focused_item_downloaded()
             return
-
         notify(__language__(30216) % action, 1500)
 
     def mark_focused_item_downloaded(self):
