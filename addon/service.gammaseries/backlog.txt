@@ -9,6 +9,8 @@ x  addon visible dans le menu "Extensions video" de Kodi (default.py -> ouvre le
 x  renommage en GammaSeries (nouvel id service.gammaseries) - desinstaller l'ancien "BetaSeries Agent" depuis Kodi puis reconfigurer login/mdp sur le nouveau
 
 
-livrable comme repository officiel
+fixer /episodes/watch_date (404 actuellement, endpoint pas encore vraiment dispo cote API malgre ce qui a ete annonce - en attente de confirmation URL/methode exacte par le dev API)
+
+publier l'addon sous forme d'un vrai repository Kodi (repository.gammaseries ou similaire) pour le rendre disponible au grand public, pas juste en install manuelle
 
 msg officiel sur forum

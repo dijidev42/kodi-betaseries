@@ -294,7 +294,7 @@ def get_urldata(url, urldata, method):
 
     try:
         connection = opener.open(req)
-        return connection.read()
+        return connection.read(), 200
 
     except urllib.error.HTTPError as e:
         response_body = b''
@@ -317,13 +317,14 @@ def get_urldata(url, urldata, method):
             pass
 
         if not silent_error:
-            log('HTTP error %s for %s: %s' % (
+            log('HTTP error %s for %s: %s - body: %s' % (
                 str(getattr(e, 'code', 'n/a')),
                 url,
-                str(getattr(e, 'reason', 'n/a'))
+                str(getattr(e, 'reason', 'n/a')),
+                response_text[:500]
             ), xbmc.LOGERROR)
 
-        return response_body
+        return response_body, getattr(e, 'code', None)
 
     except Exception as e:
         log('request error for %s: %s' % (url, repr(e)), xbmc.LOGERROR)
@@ -331,8 +332,11 @@ def get_urldata(url, urldata, method):
 
 
 def get_json(url, urldata='', method='GET'):
-    response = get_urldata(url, urldata, method)
-    return json.loads(response)
+    response, status = get_urldata(url, urldata, method)
+    data = json.loads(response) if response else {}
+    if status is not None and status >= 400 and not data.get('errors'):
+        data['errors'] = [{'code': -1, 'text': 'HTTP %s' % status}]
+    return data
 
 
 def kodi_jsonrpc(method, params=None):
@@ -475,7 +479,8 @@ class BetaSeriesAgent:
     def __init__(self):
         self.apikey = 'cca540f2c2c4'
         self.apiurl = 'https://api.betaseries.com'
-        self.apiver = '2.2'
+        self.apiver = '3.0'
+        self.watch_date_endpoint_unavailable = False
         self.service = self._build_service()
 
     def _build_service(self):
@@ -628,9 +633,15 @@ class BetaSeriesAgent:
 
     def correct_episode_watch_date(self, item):
         service = self.service
+        if self.watch_date_endpoint_unavailable:
+            return False
+
         watch_date = item[7] if len(item) > 7 else None
         bs_episode_id = item[8] if len(item) > 8 else None
         if not watch_date or not bs_episode_id:
+            log('watch date correction skipped for %s: watch_date=%r bs_episode_id=%r' % (
+                format_item_label(item), watch_date, bs_episode_id
+            ), xbmc.LOGWARNING)
             return False
 
         url = service[1] + '/episodes/watch_date'
@@ -650,10 +661,13 @@ class BetaSeriesAgent:
             code = errors[0]['code']
             if code == 2001:
                 service[6] = ''
+            if code == -1 and 'HTTP 404' in str(errors[0].get('text', '')):
+                self.watch_date_endpoint_unavailable = True
+                log('episodes/watch_date endpoint returned 404 - disabling further attempts for this run', xbmc.LOGWARNING)
             log_api_error(item, 'WatchDate', data)
             return False
 
-        log('%s watch date corrected to %s' % (format_item_label(item), watch_date))
+        log('%s watch date corrected to %s' % (format_item_label(item), watch_date), xbmc.LOGINFO)
         return True
 
     def _queue_success_notification(self, item):
@@ -693,18 +707,12 @@ class BetaSeriesAgent:
                 return False
 
             if item[6] == 'episode' and item[2] == 0 and code == 2005:
-                log('episode already not watched on BetaSeries: %s' % format_item_label(item), xbmc.LOGDEBUG)
+                log('episode already not watched on BetaSeries: %s' % format_item_label(item), xbmc.LOGINFO)
                 self._queue_success_notification(item)
                 _flush_batched_notifications(force=False)
                 return True
 
-            if item[6] == 'episode' and item[2] not in (0, -1) and self.correct_episode_watch_date(item):
-                log('episode already watched on BetaSeries, watch date corrected instead: %s' % format_item_label(item), xbmc.LOGDEBUG)
-                self._queue_success_notification(item)
-                _flush_batched_notifications(force=False)
-                return True
-
-            if item[6] == 'movie' and 'date' in urldata:
+            if 'date' in urldata:
                 log_api_error(item, 'Sync (with date, retrying without)', data)
                 retry_urldata = dict(urldata)
                 del retry_urldata['date']
@@ -719,18 +727,30 @@ class BetaSeriesAgent:
                 if not retry_errors:
                     self._queue_success_notification(item)
                     _flush_batched_notifications(force=False)
-                    log('%s marked as %s (date param unsupported by API, ignored)' % (format_item_label(item), act))
+                    log('%s marked as %s (date param rejected by API, retried without date)' % (format_item_label(item), act), xbmc.LOGWARNING)
                     return True
 
-                log_api_error(item, 'Sync', retry_data)
-                return False
+                data = retry_data
+                errors = retry_errors
+                code = errors[0]['code']
+
+            if item[6] == 'episode' and item[2] not in (0, -1) and self.correct_episode_watch_date(item):
+                log('episode already watched on BetaSeries, watch date corrected instead: %s' % format_item_label(item), xbmc.LOGINFO)
+                self._queue_success_notification(item)
+                _flush_batched_notifications(force=False)
+                return True
 
             log_api_error(item, 'Sync', data)
             return False
 
+        if item[6] == 'episode' and item[2] not in (0, -1) and (item[7] if len(item) > 7 else None):
+            # BetaSeries silently ignores the "date" param on /episodes/watched when the
+            # episode is already marked watched - force it via the dedicated endpoint too.
+            self.correct_episode_watch_date(item)
+
         self._queue_success_notification(item)
         _flush_batched_notifications(force=False)
-        log('%s marked as %s' % (format_item_label(item), act))
+        log('%s marked as %s' % (format_item_label(item), act), xbmc.LOGINFO)
         return True
 
 
@@ -809,7 +829,7 @@ class KodiLibraryResolver:
 
     def _search_show_tvdbid(self, showtitle, show_year):
         url = self.service[1] + '/shows/search'
-        query = '?v=2.2&key=%s&title=%s' % (self.service[2], urllib.parse.quote(showtitle))
+        query = '?v=3.0&key=%s&title=%s' % (self.service[2], urllib.parse.quote(showtitle))
         data = get_json(url + query, '', 'GET')
         best = self._pick_best_show(data.get('shows', []), showtitle, self._safe_int_year(show_year))
         if best:
@@ -818,7 +838,7 @@ class KodiLibraryResolver:
 
     def _search_episode_ids(self, tvdbid, season, episode_num):
         url = self.service[1] + '/shows/episodes'
-        query = '?v=2.2&key=%s&thetvdb_id=%s&season=%s&episode=%s' % (
+        query = '?v=3.0&key=%s&thetvdb_id=%s&season=%s&episode=%s' % (
             self.service[2], str(tvdbid), str(season), str(episode_num)
         )
         data = get_json(url + query, '', 'GET')

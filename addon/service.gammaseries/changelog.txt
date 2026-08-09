@@ -1,3 +1,26 @@
+1.3.5
+- episodes/watch_date currently returns HTTP 404 from BetaSeries (endpoint not confirmed live yet) -
+  the addon now stops retrying it after the first 404 in a given sync run, instead of calling it
+  (and failing) once per episode, to avoid wasting requests and flooding the log
+
+1.3.4
+- switched all API calls from v=2.2 to v=3.0 (the README already claimed v3.0; episodes/watch_date
+  was returning HTTP 404 under v2.2 - the endpoint likely only exists on v3.0)
+
+1.3.3
+- fixed watch date not actually updating for episodes already marked watched on BetaSeries:
+  the API silently ignores the "date" param on episodes/watched for already-watched episodes,
+  so episodes/watch_date is now called systematically (not just as an error fallback)
+- important state-change logs (marked as watched/unwatched/downloaded, watch date corrected)
+  now use LOGINFO so they're visible without enabling Kodi's debug logging
+
+1.3.1
+- fixed critical bug: sending "date" on episodes/watched was causing an HTTP 400 from BetaSeries for
+  most watched marks, and the addon was silently treating that failure as a success (no visible log)
+- HTTP error responses without a proper "errors" body are now always treated as real failures
+- episodes now also retry the watched mark without "date" if BetaSeries rejects it with the date included
+- HTTP error logs now include the response body to help diagnose API rejections
+
 1.3.0
 - addon renamed to GammaSeries (new addon id: service.gammaseries, was service.betaseries.com)
 - still syncs with the BetaSeries.com API/service under the hood - only the addon's own name/id changed
