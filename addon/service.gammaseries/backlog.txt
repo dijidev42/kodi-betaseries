@@ -1,16 +1,19 @@
-x update kodi v21 et betaseries v3.0
+x Kodi v21 + BetaSeries API v3.0
+x sync globale series et films (dates de visionnage incluses pour les episodes)
+x marquage "recupere" pendant la resync des episodes
+x addon visible dans le menu Extensions video de Kodi
+x renommage en GammaSeries (nouvel id service.gammaseries)
 
 
-x  sync globale serie et films
-x  date de vu synchronisee pour les episodes (watched/watch_date)
-x  date de vu tentee aussi pour les films sur movies/movie (non documente par l'API, fallback sans date si refuse par le serveur - a verifier en reel si accepte)
-x  marquage "recupere" pendant la resync des episodes (pas d'equivalent "downloaded" pour les films cote API BetaSeries)
-x  addon visible dans le menu "Extensions video" de Kodi (default.py -> ouvre les settings)
-x  renommage en GammaSeries (nouvel id service.gammaseries) - desinstaller l'ancien "BetaSeries Agent" depuis Kodi puis reconfigurer login/mdp sur le nouveau
+publier l'addon sous forme d'un vrai repository Kodi, pour le rendre dispo au grand public
+
+message officiel sur le forum
 
 
-x  fixer la correction de date (le bon endpoint est /episodes/watched_date avec le parametre new_date, pas /episodes/watch_date)
+feature : suivi retard de recuperation par serie/saison
+- comparer episodes deja diffuses (BetaSeries) vs episodes recuperes localement (Kodi), afficher le retard
+- si a jour, afficher la date de diffusion du prochain episode
 
-publier l'addon sous forme d'un vrai repository Kodi (repository.gammaseries ou similaire) pour le rendre disponible au grand public, pas juste en install manuelle
-
-msg officiel sur forum
+correction de date de visionnage pour les films : bloque
+- aucun endpoint API ne fonctionne (watched_date/watch_date/date tous testes, movies/movie ignore le parametre)
+- a redemander au contact API

@@ -334,7 +334,15 @@ def get_urldata(url, urldata, method):
 
 def get_json(url, urldata='', method='GET'):
     response, status = get_urldata(url, urldata, method)
-    data = json.loads(response) if response else {}
+    try:
+        data = json.loads(response) if response else {}
+    except Exception:
+        data = {}
+        if status is not None and status >= 400:
+            body_text = response.decode('utf-8', 'replace') if isinstance(response, bytes) else str(response)
+            data['errors'] = [{'code': -1, 'text': 'HTTP %s: %s' % (status, body_text[:200])}]
+        return data
+
     if status is not None and status >= 400 and not data.get('errors'):
         data['errors'] = [{'code': -1, 'text': 'HTTP %s' % status}]
     return data
@@ -482,7 +490,6 @@ class BetaSeriesAgent:
         self.apiurl = 'https://api.betaseries.com'
         self.apiver = '3.0'
         self.watch_date_endpoint_unavailable = False
-        self.movie_watch_date_endpoint_unavailable = False
         self._followed_shows = set()
         self.service = self._build_service()
 
@@ -678,41 +685,6 @@ class BetaSeriesAgent:
         log('%s watch date corrected to %s' % (format_item_label(item), watch_date), xbmc.LOGINFO)
         return True
 
-    def correct_movie_watch_date(self, item):
-        service = self.service
-        if self.movie_watch_date_endpoint_unavailable:
-            return False
-
-        watch_date = item[7] if len(item) > 7 else None
-        if not watch_date:
-            return False
-
-        url = service[1] + '/movies/watched_date'
-        urldata = {
-            'v': self.apiver, 'key': service[2], 'token': service[6],
-            'id': item[0], 'new_date': watch_date
-        }
-        try:
-            data = get_json(url, urldata, 'POST')
-        except Exception:
-            self.service = self._service_fail(service, False)
-            log('movie watch date correction failed for %s' % format_item_label(item), xbmc.LOGERROR)
-            return False
-
-        errors = data.get('errors')
-        if errors:
-            code = errors[0]['code']
-            if code == 2001:
-                service[6] = ''
-            if code == -1 and 'HTTP 404' in str(errors[0].get('text', '')):
-                self.movie_watch_date_endpoint_unavailable = True
-                log('movies/watched_date endpoint returned 404 - disabling further attempts for this run', xbmc.LOGWARNING)
-            log_api_error(item, 'MovieWatchDate', data)
-            return False
-
-        log('%s watch date corrected to %s' % (format_item_label(item), watch_date), xbmc.LOGINFO)
-        return True
-
     def _queue_success_notification(self, item):
         if not self.service[15]:
             return
@@ -783,12 +755,6 @@ class BetaSeriesAgent:
                 _flush_batched_notifications(force=False)
                 return True
 
-            if item[6] == 'movie' and item[2] != 0 and self.correct_movie_watch_date(item):
-                log('movie already watched on BetaSeries, watch date corrected instead: %s' % format_item_label(item), xbmc.LOGINFO)
-                self._queue_success_notification(item)
-                _flush_batched_notifications(force=False)
-                return True
-
             log_api_error(item, 'Sync', data)
             return False
 
@@ -796,8 +762,6 @@ class BetaSeriesAgent:
             # BetaSeries silently ignores the "date" param on /episodes/watched when the
             # episode is already marked watched - force it via the dedicated endpoint too.
             self.correct_episode_watch_date(item)
-        elif item[6] == 'movie' and item[2] != 0 and (item[7] if len(item) > 7 else None):
-            self.correct_movie_watch_date(item)
 
         self._queue_success_notification(item)
         _flush_batched_notifications(force=False)
@@ -1234,7 +1198,10 @@ class ManualSync:
         index = {} if reset else load_index(MOVIES_INDEX_FILE)
         progress_state = {} if reset else load_progress(MOVIES_PROGRESS_FILE)
 
-        data = kodi_jsonrpc('VideoLibrary.GetMovies', {'properties': ['playcount', 'title', 'originaltitle']})
+        data = kodi_jsonrpc('VideoLibrary.GetMovies', {
+            'properties': ['playcount', 'title', 'originaltitle'],
+            'sort': {'method': 'title', 'order': 'ascending'}
+        })
         movies = data.get('result', {}).get('movies', [])
 
         def entry_key(mv):

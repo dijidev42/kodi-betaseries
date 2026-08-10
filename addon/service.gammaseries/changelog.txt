@@ -1,81 +1,22 @@
-1.4.3
-- fixed sync_recently_added (triggered on every library scan finish, including startup scans)
-  re-processing the same "recently added" episodes/movies every single time - it now remembers
-  which items it already handled (recently_added_processed.json) and skips them on future scans
+1.4.8 - Fiabilite & confort
+- date de visionnage des episodes correctement synchronisee et corrigee (episodes/watched_date)
+- correction de date pour les films : non supportee par l'API (teste et confirme, abandonne pour l'instant)
+- statistiques de sync corrigees (plus de double comptage episodes)
+- performance : moins d'appels API par episode (suivi de serie et resolution d'episodes mis en cache)
+- la sync des nouveautes (fin de scan bibliotheque) ne re-traite plus les memes elements a chaque scan
+- sync des films triee par ordre alphabetique
+- passage de toutes les requetes API en v3.0
 
-1.4.2
-- try movies/watched_date (mirroring the confirmed episodes/watched_date endpoint) to correct
-  a movie's watch date when BetaSeries silently ignores "date" on an already-watched movie -
-  test/unconfirmed, disables itself automatically after a 404 like the episode version
-- known limitation: movies already recorded in the local sync index with a matching state are
-  still skipped without a date re-check (unlike episodes) - only newly-marked movies benefit
-  for now
+1.3.0 - Renommage
+- l'addon s'appelle desormais GammaSeries (nouvel id : service.gammaseries)
 
-1.4.1
-- fixed episode sync stats double-counting: marking an episode "downloaded" and marking it
-  "watched"/correcting its date were each incrementing the updated/skipped/errors counters
-  independently, so the "X updated / Y skipped / Z errors" summary could exceed the actual
-  number of episodes processed. Each episode now contributes to exactly one counter.
-
-1.4.0
-- performance: "follow show" is now only requested once per show per sync run instead
-  of once per episode
-- performance: episode resolution now fetches a whole season in one API call and
-  caches it, instead of one API call per episode (falls back to the old per-episode
-  call if the episode isn't found in the season listing)
-
-1.3.8
-- confirmed working endpoint: episodes/watched_date with "new_date" param
-- removed the debug endpoint-probing tool (Settings > Debug) now that the correct
-  endpoint is confirmed - no longer needed
-
-1.3.7
-- add a debug tool (Settings > Debug > "Tester les endpoints watch_date") that probes 13
-  URL/param combinations for correcting an episode's watch date in one pass, logging each
-  result to kodi.log (LOGWARNING, visible without debug mode) - includes rewatch variants
-
-1.3.6
-- try /episodes/watched_date instead of /episodes/watch_date (test, unconfirmed)
-
-1.3.5
-- episodes/watch_date currently returns HTTP 404 from BetaSeries (endpoint not confirmed live yet) -
-  the addon now stops retrying it after the first 404 in a given sync run, instead of calling it
-  (and failing) once per episode, to avoid wasting requests and flooding the log
-
-1.3.4
-- switched all API calls from v=2.2 to v=3.0 (the README already claimed v3.0; episodes/watch_date
-  was returning HTTP 404 under v2.2 - the endpoint likely only exists on v3.0)
-
-1.3.3
-- fixed watch date not actually updating for episodes already marked watched on BetaSeries:
-  the API silently ignores the "date" param on episodes/watched for already-watched episodes,
-  so episodes/watch_date is now called systematically (not just as an error fallback)
-- important state-change logs (marked as watched/unwatched/downloaded, watch date corrected)
-  now use LOGINFO so they're visible without enabling Kodi's debug logging
-
-1.3.1
-- fixed critical bug: sending "date" on episodes/watched was causing an HTTP 400 from BetaSeries for
-  most watched marks, and the addon was silently treating that failure as a success (no visible log)
-- HTTP error responses without a proper "errors" body are now always treated as real failures
-- episodes now also retry the watched mark without "date" if BetaSeries rejects it with the date included
-- HTTP error logs now include the response body to help diagnose API rejections
-
-1.3.0
-- addon renamed to GammaSeries (new addon id: service.gammaseries, was service.betaseries.com)
-- still syncs with the BetaSeries.com API/service under the hood - only the addon's own name/id changed
-
-1.2.1
-- episode sync (manual/full) now also marks episodes as "downloaded" (récupéré) on BetaSeries, once per episode
-- addon now also registers as a video plugin source so it appears in Kodi's "Video add-ons" menu (opens settings)
-- fixed missing addon icon (explicit <assets><icon> declaration required by Kodi v21+)
-
-1.2.0
-- episodes now synced with their real Kodi watch date (episodes/watched date param)
-- existing watched episodes with a wrong date get corrected via episodes/watch_date (real-time marking and manual/full sync)
-- movies now also try to send the real Kodi watch date on movies/movie (undocumented for this endpoint); falls back to marking without date if the API rejects it
+1.2.1 - Ameliorations sync
+- marquage "recupere" pendant la resync des episodes
+- addon visible dans le menu "Extensions video" de Kodi
+- icone corrigee
 
 1.1.0
-- added library global sync Kodi -> Betaseries
+- synchro globale bibliotheque Kodi -> BetaSeries
 
 1.0.0
-- initial release working with Kodi v21 and Betaseries API v3.0
+- version initiale, compatible Kodi v21 et BetaSeries API v3.0
