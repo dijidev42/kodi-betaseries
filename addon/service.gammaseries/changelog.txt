@@ -1,3 +1,29 @@
+1.4.3
+- fixed sync_recently_added (triggered on every library scan finish, including startup scans)
+  re-processing the same "recently added" episodes/movies every single time - it now remembers
+  which items it already handled (recently_added_processed.json) and skips them on future scans
+
+1.4.2
+- try movies/watched_date (mirroring the confirmed episodes/watched_date endpoint) to correct
+  a movie's watch date when BetaSeries silently ignores "date" on an already-watched movie -
+  test/unconfirmed, disables itself automatically after a 404 like the episode version
+- known limitation: movies already recorded in the local sync index with a matching state are
+  still skipped without a date re-check (unlike episodes) - only newly-marked movies benefit
+  for now
+
+1.4.1
+- fixed episode sync stats double-counting: marking an episode "downloaded" and marking it
+  "watched"/correcting its date were each incrementing the updated/skipped/errors counters
+  independently, so the "X updated / Y skipped / Z errors" summary could exceed the actual
+  number of episodes processed. Each episode now contributes to exactly one counter.
+
+1.4.0
+- performance: "follow show" is now only requested once per show per sync run instead
+  of once per episode
+- performance: episode resolution now fetches a whole season in one API call and
+  caches it, instead of one API call per episode (falls back to the old per-episode
+  call if the episode isn't found in the season listing)
+
 1.3.8
 - confirmed working endpoint: episodes/watched_date with "new_date" param
 - removed the debug endpoint-probing tool (Settings > Debug) now that the correct

@@ -59,6 +59,7 @@ EPISODES_PROGRESS_FILE = os.path.join(__profile__, 'episodes_sync_progress.json'
 MOVIES_PROGRESS_FILE = os.path.join(__profile__, 'movies_sync_progress.json')
 STOP_EPISODES_FILE = os.path.join(__profile__, 'sync_episodes.stop')
 STOP_MOVIES_FILE = os.path.join(__profile__, 'sync_movies.stop')
+RECENTLY_ADDED_PROCESSED_FILE = os.path.join(__profile__, 'recently_added_processed.json')
 
 
 def ensure_profile_dir():
@@ -481,6 +482,8 @@ class BetaSeriesAgent:
         self.apiurl = 'https://api.betaseries.com'
         self.apiver = '3.0'
         self.watch_date_endpoint_unavailable = False
+        self.movie_watch_date_endpoint_unavailable = False
+        self._followed_shows = set()
         self.service = self._build_service()
 
     def _build_service(self):
@@ -574,6 +577,9 @@ class BetaSeriesAgent:
         if episode[6] != 'episode' or not service[14] or episode[2] == -1:
             return True
 
+        if episode[0] in self._followed_shows:
+            return True
+
         url = service[1] + '/shows/show'
         urldata = {
             'v': self.apiver,
@@ -591,6 +597,7 @@ class BetaSeriesAgent:
 
         errors = data.get('errors')
         if not errors:
+            self._followed_shows.add(episode[0])
             if service[15]:
                 notify(__language__(30013) + episode[4])
             return True
@@ -602,6 +609,7 @@ class BetaSeriesAgent:
             return False
 
         if code == 2003:
+            self._followed_shows.add(episode[0])
             return True
 
         log_api_error(episode, 'Follow show', data)
@@ -665,6 +673,41 @@ class BetaSeriesAgent:
                 self.watch_date_endpoint_unavailable = True
                 log('episodes/watched_date endpoint returned 404 - disabling further attempts for this run', xbmc.LOGWARNING)
             log_api_error(item, 'WatchDate', data)
+            return False
+
+        log('%s watch date corrected to %s' % (format_item_label(item), watch_date), xbmc.LOGINFO)
+        return True
+
+    def correct_movie_watch_date(self, item):
+        service = self.service
+        if self.movie_watch_date_endpoint_unavailable:
+            return False
+
+        watch_date = item[7] if len(item) > 7 else None
+        if not watch_date:
+            return False
+
+        url = service[1] + '/movies/watched_date'
+        urldata = {
+            'v': self.apiver, 'key': service[2], 'token': service[6],
+            'id': item[0], 'new_date': watch_date
+        }
+        try:
+            data = get_json(url, urldata, 'POST')
+        except Exception:
+            self.service = self._service_fail(service, False)
+            log('movie watch date correction failed for %s' % format_item_label(item), xbmc.LOGERROR)
+            return False
+
+        errors = data.get('errors')
+        if errors:
+            code = errors[0]['code']
+            if code == 2001:
+                service[6] = ''
+            if code == -1 and 'HTTP 404' in str(errors[0].get('text', '')):
+                self.movie_watch_date_endpoint_unavailable = True
+                log('movies/watched_date endpoint returned 404 - disabling further attempts for this run', xbmc.LOGWARNING)
+            log_api_error(item, 'MovieWatchDate', data)
             return False
 
         log('%s watch date corrected to %s' % (format_item_label(item), watch_date), xbmc.LOGINFO)
@@ -740,6 +783,12 @@ class BetaSeriesAgent:
                 _flush_batched_notifications(force=False)
                 return True
 
+            if item[6] == 'movie' and item[2] != 0 and self.correct_movie_watch_date(item):
+                log('movie already watched on BetaSeries, watch date corrected instead: %s' % format_item_label(item), xbmc.LOGINFO)
+                self._queue_success_notification(item)
+                _flush_batched_notifications(force=False)
+                return True
+
             log_api_error(item, 'Sync', data)
             return False
 
@@ -747,6 +796,8 @@ class BetaSeriesAgent:
             # BetaSeries silently ignores the "date" param on /episodes/watched when the
             # episode is already marked watched - force it via the dedicated endpoint too.
             self.correct_episode_watch_date(item)
+        elif item[6] == 'movie' and item[2] != 0 and (item[7] if len(item) > 7 else None):
+            self.correct_movie_watch_date(item)
 
         self._queue_success_notification(item)
         _flush_batched_notifications(force=False)
@@ -758,6 +809,7 @@ class KodiLibraryResolver:
     def __init__(self, agent):
         self.agent = agent
         self.service = agent.service
+        self._season_episode_cache = {}
 
     def _norm(self, value):
         if value is None:
@@ -836,7 +888,31 @@ class KodiLibraryResolver:
             return best.get('thetvdb_id')
         return ''
 
+    def _get_season_episodes(self, tvdbid, season):
+        cache_key = (str(tvdbid), str(season))
+        if cache_key in self._season_episode_cache:
+            return self._season_episode_cache[cache_key]
+
+        url = self.service[1] + '/shows/episodes'
+        query = '?v=3.0&key=%s&thetvdb_id=%s&season=%s' % (
+            self.service[2], str(tvdbid), str(season)
+        )
+        try:
+            data = get_json(url + query, '', 'GET')
+            episodes = data.get('episodes', [])
+        except Exception:
+            episodes = []
+
+        self._season_episode_cache[cache_key] = episodes
+        return episodes
+
     def _search_episode_ids(self, tvdbid, season, episode_num):
+        for ep in self._get_season_episodes(tvdbid, season):
+            if str(ep.get('episode')) == str(episode_num):
+                return ep.get('id'), ep.get('thetvdb_id')
+
+        # fallback: direct single-episode query, in case the season listing
+        # didn't include this episode (or the "no episode filter" call failed)
         url = self.service[1] + '/shows/episodes'
         query = '?v=3.0&key=%s&thetvdb_id=%s&season=%s&episode=%s' % (
             self.service[2], str(tvdbid), str(season), str(episode_num)
@@ -1097,34 +1173,32 @@ class ManualSync:
                 key = str(item[1])
                 state = item[2]
                 watch_date = item[7] if len(item) > 7 else None
+                episode_changed = False
+                episode_error = False
 
                 if not index.get(key, {}).get('downloaded'):
                     downloaded_item = list(item)
                     downloaded_item[2] = -1
                     if self.agent.mark_item(downloaded_item, force=True):
-                        updated += 1
+                        episode_changed = True
                         new_index[key] = dict(new_index.get(key, index.get(key, {})))
                         new_index[key]['downloaded'] = True
                         save_index(EPISODES_INDEX_FILE, new_index)
                     else:
-                        errors_count += 1
+                        episode_error = True
 
                 if key in index and index.get(key, {}).get('state') == state:
                     if state == 1 and watch_date and index.get(key, {}).get('date') != watch_date:
                         if self.agent.correct_episode_watch_date(item):
-                            updated += 1
+                            episode_changed = True
                             new_index[key] = dict(new_index.get(key, index[key]))
                             new_index[key]['date'] = watch_date
                             new_index[key]['ts'] = int(time.time())
                             save_index(EPISODES_INDEX_FILE, new_index)
                         else:
-                            errors_count += 1
-                    else:
-                        skipped += 1
-                    continue
-
-                if self.agent.mark_item(item, force=True):
-                    updated += 1
+                            episode_error = True
+                elif self.agent.mark_item(item, force=True):
+                    episode_changed = True
                     new_index[key] = dict(new_index.get(key, {}))
                     new_index[key].update({
                         'state': state,
@@ -1135,7 +1209,14 @@ class ManualSync:
                     })
                     save_index(EPISODES_INDEX_FILE, new_index)
                 else:
+                    episode_error = True
+
+                if episode_error:
                     errors_count += 1
+                elif episode_changed:
+                    updated += 1
+                else:
+                    skipped += 1
         finally:
             progress.close()
             save_index(EPISODES_INDEX_FILE, new_index)
@@ -1246,7 +1327,12 @@ class MyPlayer(xbmc.Monitor):
     def sync_recently_added(self):
         try:
             log('Synchronisation des nouveautés issues du scraping avec états (récupéré/lu/non lu)...')
-            
+
+            processed = load_json_file(RECENTLY_ADDED_PROCESSED_FILE, {'episodes': [], 'movies': []})
+            processed_episodes = set(processed.get('episodes', []))
+            processed_movies = set(processed.get('movies', []))
+            changed = False
+
             # Épisodes récents
             episodes_data = kodi_jsonrpc(
                 'VideoLibrary.GetRecentlyAddedEpisodes',
@@ -1254,21 +1340,26 @@ class MyPlayer(xbmc.Monitor):
             )
             for ep in episodes_data.get('result', {}).get('episodes', []):
                 episodeid = ep.get('episodeid')
+                if episodeid in processed_episodes:
+                    continue
                 playcount = int(ep.get('playcount') or 0)
-                
+
                 # Récupère les infos de l'épisode (playstatus est basé sur playcount > 0)
                 playstatus = (playcount > 0)
                 episode = self.resolver.get_episode_info(episodeid, playcount, playstatus)
-                
+
                 if episode:
                     # 1. Marquer d'abord l'épisode comme récupéré/téléchargé sur BetaSeries (état -1)
-                    episode[2] = -1 
+                    episode[2] = -1
                     self.agent.mark_item(episode, force=False)
-                    
+
                     # 2. Si l'épisode a déjà été lu dans Kodi (playcount > 0), mettre à jour l'état à lu (1)
                     if playcount > 0:
                         episode[2] = 1
                         self.agent.mark_item(episode, force=False)
+
+                    processed_episodes.add(episodeid)
+                    changed = True
 
             # Films récents (les films gèrent l'état vu / non vu)
             movies_data = kodi_jsonrpc(
@@ -1277,10 +1368,20 @@ class MyPlayer(xbmc.Monitor):
             )
             for mv in movies_data.get('result', {}).get('movies', []):
                 movieid = mv.get('movieid')
+                if movieid in processed_movies:
+                    continue
                 playcount = int(mv.get('playcount') or 0)
                 movie = self.resolver.get_movie_info(movieid, playcount, (playcount > 0))
                 if movie:
                     self.agent.mark_item(movie, force=False)
+                    processed_movies.add(movieid)
+                    changed = True
+
+            if changed:
+                save_json_file(RECENTLY_ADDED_PROCESSED_FILE, {
+                    'episodes': list(processed_episodes),
+                    'movies': list(processed_movies)
+                })
 
             _flush_batched_notifications(force=True)
         except Exception as e:
