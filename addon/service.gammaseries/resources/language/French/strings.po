@@ -92,6 +92,22 @@ msgctxt "#30247"
 msgid "Stop current series sync"
 msgstr "Arrêter la synchro des séries en cours"
 
+msgctxt "#30250"
+msgid "Catch-up status"
+msgstr "État de récupération"
+
+msgctxt "#30251"
+msgid "Check catch-up status"
+msgstr "Vérifier l'état de récupération des séries"
+
+msgctxt "#30252"
+msgid "View last catch-up report"
+msgstr "Revoir le dernier rapport"
+
+msgctxt "#30253"
+msgid "Include specials in catch-up check"
+msgstr "Inclure les épisodes spéciaux"
+
 msgctxt "#30013"
 msgid "Show added : "
 msgstr "Série ajoutée : "

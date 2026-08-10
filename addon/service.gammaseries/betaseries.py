@@ -60,6 +60,7 @@ MOVIES_PROGRESS_FILE = os.path.join(__profile__, 'movies_sync_progress.json')
 STOP_EPISODES_FILE = os.path.join(__profile__, 'sync_episodes.stop')
 STOP_MOVIES_FILE = os.path.join(__profile__, 'sync_movies.stop')
 RECENTLY_ADDED_PROCESSED_FILE = os.path.join(__profile__, 'recently_added_processed.json')
+CATCHUP_REPORT_FILE = os.path.join(__profile__, 'catchup_report.txt')
 
 
 def ensure_profile_dir():
@@ -864,6 +865,9 @@ class KodiLibraryResolver:
         try:
             data = get_json(url + query, '', 'GET')
             episodes = data.get('episodes', [])
+            # the API sometimes ignores the season filter and returns episodes from
+            # every season when no "episode" param is given - filter defensively
+            episodes = [e for e in episodes if str(e.get('season')) == str(season)]
         except Exception:
             episodes = []
 
@@ -1276,6 +1280,212 @@ class ManualSync:
         notify(__language__(30235) % (updated, skipped, errors_count), 3000)
 
 
+def _episode_air_date(ep):
+    return ep.get('date') or ep.get('first_aired') or ep.get('air_date') or ''
+
+
+class CatchupChecker:
+    def __init__(self, agent, resolver):
+        self.agent = agent
+        self.resolver = resolver
+        self.include_specials = __addon__.getSetting('catchup_include_specials') == 'true'
+
+    def check(self):
+        try:
+            self._check()
+        except Exception as e:
+            log('catchup check failed: %r' % e, xbmc.LOGERROR)
+            import traceback
+            log(traceback.format_exc(), xbmc.LOGERROR)
+            xbmcgui.Dialog().notification('GammaSeries', 'Erreur pendant la verification (voir kodi.log)', xbmcgui.NOTIFICATION_ERROR, 3000)
+
+    def _check(self):
+        shows_data = kodi_jsonrpc('VideoLibrary.GetTVShows', {'properties': ['title', 'year', 'uniqueid']})
+        shows = shows_data.get('result', {}).get('tvshows', [])
+        log('catchup check: %d shows in library' % len(shows), xbmc.LOGINFO)
+
+        total = len(shows)
+        today = time.strftime('%Y-%m-%d')
+        behind_shows = []
+        uptodate_shows = []
+        checked_count = 0
+        skipped_no_tvdbid = 0
+        canceled = False
+
+        progress = SyncProgressDialog("Etat de recuperation")
+        progress.create('Verification en cours...', '', '%d series a verifier' % total)
+
+        for pos, show in enumerate(shows, 1):
+            if progress.iscanceled():
+                canceled = True
+                break
+
+            tvshowid = show.get('tvshowid')
+            showtitle = show.get('title') or show.get('label') or ''
+            uniqueid = show.get('uniqueid', {}) or {}
+            tvdbid = uniqueid.get('tvdb') or uniqueid.get('thetvdb') or ''
+
+            progress.update(
+                pos, total,
+                '%d / %d' % (pos, total),
+                showtitle,
+                '%d serie(s) en retard trouvee(s) jusqu\'ici' % len(behind_shows)
+            )
+
+            if not tvdbid:
+                try:
+                    tvdbid = self.resolver._search_show_tvdbid(showtitle, show.get('year'))
+                except Exception:
+                    tvdbid = ''
+            if not tvdbid:
+                skipped_no_tvdbid += 1
+                continue
+
+            eps_data = kodi_jsonrpc('VideoLibrary.GetEpisodes', {
+                'tvshowid': tvshowid,
+                'properties': ['season', 'episode']
+            })
+            local_eps = eps_data.get('result', {}).get('episodes', [])
+            if not local_eps:
+                continue
+
+            checked_count += 1
+
+            local_by_season = {}
+            for ep in local_eps:
+                local_by_season.setdefault(ep.get('season'), set()).add(ep.get('episode'))
+            if not local_by_season:
+                continue
+
+            missing_by_season = []
+            next_episode_candidates = []
+
+            for season in sorted(local_by_season.keys()):
+                try:
+                    bs_episodes = self.resolver._get_season_episodes(tvdbid, season)
+                except Exception:
+                    bs_episodes = []
+
+                aired_nums = set()
+                for e in bs_episodes:
+                    if not self.include_specials and e.get('special'):
+                        continue
+                    air_date = _episode_air_date(e)[:10]
+                    if air_date and air_date <= today:
+                        try:
+                            aired_nums.add(int(e.get('episode')))
+                        except (TypeError, ValueError):
+                            pass
+
+                local_nums = local_by_season[season]
+                missing_nums = sorted(n for n in aired_nums if n not in local_nums)
+                if missing_nums:
+                    missing_by_season.append((season, missing_nums))
+
+                for e in bs_episodes:
+                    if not self.include_specials and e.get('special'):
+                        continue
+                    air_date = _episode_air_date(e)[:10]
+                    if air_date and air_date > today:
+                        next_episode_candidates.append((air_date, season, e.get('episode')))
+
+            if missing_by_season:
+                behind_shows.append({
+                    'title': showtitle,
+                    'seasons': missing_by_season,
+                    'total_missing': sum(len(nums) for _, nums in missing_by_season)
+                })
+            elif next_episode_candidates:
+                next_episode_candidates.sort()
+                next_date, next_season, next_ep = next_episode_candidates[0]
+                uptodate_shows.append({
+                    'title': showtitle,
+                    'date': next_date,
+                    'season': next_season,
+                    'episode': next_ep
+                })
+
+        progress.close()
+
+        behind_shows.sort(key=lambda s: s['title'].lower())
+        uptodate_shows.sort(key=lambda s: s['title'].lower())
+        total_missing = sum(s['total_missing'] for s in behind_shows)
+
+        sep = '-' * 50
+        lines = []
+        lines.append('=' * 50)
+        lines.append(' ETAT DE RECUPERATION DES SERIES')
+        lines.append('=' * 50)
+        lines.append('Genere le %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+        lines.append('Episodes speciaux : %s' % ('inclus' if self.include_specials else 'exclus'))
+        lines.append('%d series verifiees' % checked_count)
+        if canceled:
+            lines.append('')
+            lines.append('!! Verification annulee - resultats partiels (%d/%d series parcourues) !!' % (pos, total))
+        lines.append('')
+        lines.append('RESUME : %d serie(s) en retard (%d episode(s) manquant(s) au total), %d serie(s) a jour' % (
+            len(behind_shows), total_missing, len(uptodate_shows)
+        ))
+        lines.append('')
+
+        lines.append(sep)
+        lines.append('SERIES EN RETARD (%d)' % len(behind_shows))
+        lines.append(sep)
+        if behind_shows:
+            for show in behind_shows:
+                lines.append('')
+                lines.append('%s  (%d manquant(s))' % (show['title'], show['total_missing']))
+                for season, missing_nums in show['seasons']:
+                    lines.append('  Saison %02d : %s' % (
+                        season, ', '.join('E%02d' % n for n in missing_nums)
+                    ))
+        else:
+            lines.append('')
+            lines.append('Aucune, tout est a jour !')
+        lines.append('')
+
+        lines.append(sep)
+        lines.append('A JOUR - PROCHAINS EPISODES CONNUS (%d)' % len(uptodate_shows))
+        lines.append(sep)
+        if uptodate_shows:
+            for show in uptodate_shows:
+                lines.append('%s : S%02dE%s le %s' % (
+                    show['title'], show['season'], show['episode'], show['date']
+                ))
+        else:
+            lines.append('Aucune information disponible')
+
+        log('catchup check: %d shows checked, %d skipped (no tvdbid)' % (checked_count, skipped_no_tvdbid), xbmc.LOGINFO)
+
+        report_text = '\n'.join(lines)
+        self._save_report(report_text)
+
+        log('catchup check: opening report (%d lines)' % len(lines), xbmc.LOGINFO)
+        xbmcgui.Dialog().textviewer('Etat de recuperation des series', report_text)
+        log('catchup check: report closed', xbmc.LOGINFO)
+
+    def _save_report(self, report_text):
+        try:
+            ensure_profile_dir()
+            with open(CATCHUP_REPORT_FILE, 'w', encoding='utf-8') as f:
+                f.write(report_text)
+        except Exception as e:
+            log('could not save catchup report: %r' % e, xbmc.LOGERROR)
+
+    def view_last_report(self):
+        if not os.path.isfile(CATCHUP_REPORT_FILE):
+            notify("Aucun rapport enregistre pour l'instant", 2000)
+            return
+        try:
+            with open(CATCHUP_REPORT_FILE, 'r', encoding='utf-8') as f:
+                report_text = f.read()
+        except Exception as e:
+            log('could not read catchup report: %r' % e, xbmc.LOGERROR)
+            notify("Impossible de lire le rapport", 2000)
+            return
+        xbmcgui.Dialog().textviewer('Etat de recuperation des series', report_text)
+
+
 class MyPlayer(xbmc.Monitor):
     def __init__(self, *args, **kwargs):
         xbmc.Monitor.__init__(self)
@@ -1295,19 +1505,26 @@ class MyPlayer(xbmc.Monitor):
         try:
             log('Synchronisation des nouveautés issues du scraping avec états (récupéré/lu/non lu)...')
 
-            processed = load_json_file(RECENTLY_ADDED_PROCESSED_FILE, {'episodes': [], 'movies': []})
-            processed_episodes = set(processed.get('episodes', []))
-            processed_movies = set(processed.get('movies', []))
+            def _as_dict(value):
+                if isinstance(value, list):
+                    return dict((str(i), None) for i in value)
+                return value or {}
+
+            processed = load_json_file(RECENTLY_ADDED_PROCESSED_FILE, {'episodes': {}, 'movies': {}})
+            processed_episodes = _as_dict(processed.get('episodes'))
+            processed_movies = _as_dict(processed.get('movies'))
             changed = False
 
             # Épisodes récents
             episodes_data = kodi_jsonrpc(
                 'VideoLibrary.GetRecentlyAddedEpisodes',
-                {'properties': ['playcount', 'showtitle', 'season', 'episode'], 'limits': {'start': 0, 'end': 250}}
+                {'properties': ['playcount', 'showtitle', 'season', 'episode', 'dateadded'], 'limits': {'start': 0, 'end': 250}}
             )
             for ep in episodes_data.get('result', {}).get('episodes', []):
                 episodeid = ep.get('episodeid')
-                if episodeid in processed_episodes:
+                dateadded = ep.get('dateadded')
+                key = str(episodeid)
+                if key in processed_episodes and processed_episodes[key] == dateadded:
                     continue
                 playcount = int(ep.get('playcount') or 0)
 
@@ -1325,29 +1542,31 @@ class MyPlayer(xbmc.Monitor):
                         episode[2] = 1
                         self.agent.mark_item(episode, force=False)
 
-                    processed_episodes.add(episodeid)
+                    processed_episodes[key] = dateadded
                     changed = True
 
             # Films récents (les films gèrent l'état vu / non vu)
             movies_data = kodi_jsonrpc(
                 'VideoLibrary.GetRecentlyAddedMovies',
-                {'properties': ['playcount', 'title', 'originaltitle'], 'limits': {'start': 0, 'end': 15}}
+                {'properties': ['playcount', 'title', 'originaltitle', 'dateadded'], 'limits': {'start': 0, 'end': 15}}
             )
             for mv in movies_data.get('result', {}).get('movies', []):
                 movieid = mv.get('movieid')
-                if movieid in processed_movies:
+                dateadded = mv.get('dateadded')
+                key = str(movieid)
+                if key in processed_movies and processed_movies[key] == dateadded:
                     continue
                 playcount = int(mv.get('playcount') or 0)
                 movie = self.resolver.get_movie_info(movieid, playcount, (playcount > 0))
                 if movie:
                     self.agent.mark_item(movie, force=False)
-                    processed_movies.add(movieid)
+                    processed_movies[key] = dateadded
                     changed = True
 
             if changed:
                 save_json_file(RECENTLY_ADDED_PROCESSED_FILE, {
-                    'episodes': list(processed_episodes),
-                    'movies': list(processed_movies)
+                    'episodes': processed_episodes,
+                    'movies': processed_movies
                 })
 
             _flush_batched_notifications(force=True)
@@ -1465,6 +1684,12 @@ class Main:
             return
         if action == 'mark_downloaded':
             self.mark_focused_item_downloaded()
+            return
+        if action == 'check_catchup_status':
+            CatchupChecker(self.agent, self.resolver).check()
+            return
+        if action == 'view_catchup_report':
+            CatchupChecker(self.agent, self.resolver).view_last_report()
             return
         notify(__language__(30216) % action, 1500)
 

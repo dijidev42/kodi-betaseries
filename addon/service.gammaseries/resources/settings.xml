@@ -22,5 +22,8 @@
         <setting id="sync_episodes_now" type="action" label="30245" action="RunScript(service.gammaseries,?action=sync_episodes)"/>
         <setting id="full_sync_episodes_now" type="action" label="30246" action="RunScript(service.gammaseries,?action=full_sync_episodes)"/>
         <setting id="stop_sync_episodes_now" type="action" label="30247" action="RunScript(service.gammaseries,?action=stop_sync_episodes)"/>
+        <setting id="catchup_include_specials" type="bool" label="30253" default="false"/>
+        <setting id="check_catchup_status" type="action" label="30251" action="RunScript(service.gammaseries,?action=check_catchup_status)"/>
+        <setting id="view_catchup_report" type="action" label="30252" action="RunScript(service.gammaseries,?action=view_catchup_report)"/>
     </category>
 </settings>

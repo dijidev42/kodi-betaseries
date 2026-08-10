@@ -1,3 +1,62 @@
+1.5.13 - "Inclure les episodes speciaux" desactive par defaut (etait active par defaut avant) -
+  ne s'applique qu'aux nouvelles installs, decoche-le manuellement si deja installe
+
+1.5.12
+- report formatting overhaul: alphabetical order, per-show missing-episode totals, a summary
+  line, and clear section separators, instead of a flat list of lines
+- removed the debug dump tool (Settings > Debug) now that the "special" field is confirmed
+
+1.5.11
+- confirmed the real field: episodes have a "special" flag (0/1) from BetaSeries, independent of
+  season number (a special can be numbered inside a regular season, e.g. Yellowstone S01E04)
+- catch-up check now filters on that "special" field instead of assuming specials are season 0
+
+1.5.10 - /episodes/list turned out to be the user's personal "to watch" queue (grouped by show,
+  empty if nothing pending), not a show's full episode catalog - reverted debug tool to dump
+  /shows/episodes raw data to find the actual "is special" field instead
+
+1.5.9 - debug tool now tests /episodes/list (properly documented, has a "specials" param) instead of
+  the undocumented /shows/episodes, to validate switching the whole catchup feature to it
+
+1.5.8
+- add a debug tool (Settings > Debug > "Dumper une saison") to inspect the raw BetaSeries episode
+  JSON for a show/season, to find the field that marks an episode as "special" even when it's
+  numbered within a regular season (not just season 0)
+
+1.5.7
+- fixed re-scraped episodes/movies (same Kodi library id reused) being silently skipped by the
+  "recently added" dedup - now keyed by (id, dateadded) instead of just id, so a genuine re-add
+  is processed again even if Kodi reused the same id
+
+1.5.6 - CORRECTIF IMPORTANT : shows/episodes ignore parfois le filtre de saison quand on ne precise
+  pas l'episode (retourne des episodes d'autres saisons/speciaux) - filtrage cote client ajoute.
+  Impacte le rapport d'etat de recuperation (chiffres absurdes possibles) et potentiellement la
+  resolution d'episodes de la sync principale - relancer un check/sync apres cette mise a jour.
+
+1.5.5
+- nouveau reglage "Inclure les episodes speciaux" (active par defaut) pour l'etat de recuperation :
+  permet d'exclure la saison 0 de la comparaison, comme le fait BetaSeries lui-meme
+
+1.5.4
+- le rapport d'etat de recuperation est maintenant sauvegarde et peut etre revu sans refaire les
+  appels API (bouton "Revoir le dernier rapport")
+- boutons deplaces dans la section "Synchronisation series" (au lieu d'une categorie a part)
+
+1.5.3 - la barre de progression affiche aussi le nombre de series en retard trouvees en direct
+
+1.5.2 - "Etat de recuperation des series" affiche maintenant une barre de progression avec la serie
+  en cours de verification, annulable
+
+1.5.1 - Diagnostic pour "Etat de recuperation des series" (aucun rapport ne s'affichait chez un testeur,
+  logs ajoutes pour comprendre pourquoi)
+
+1.5.0 - Etat de recuperation des series
+- nouveau bouton (Parametres > "Verifier l'etat de recuperation des series") qui liste, pour chaque
+  serie de la bibliotheque, les episodes deja diffuses (BetaSeries) mais pas encore recuperes (Kodi),
+  et pour les series a jour affiche la date du prochain episode connu
+- s'appuie sur /shows/episodes (deja confirme fonctionnel) ; /episodes/latest pourrait simplifier ca
+  plus tard, a verifier (doc non exploitable automatiquement, rendu en JS)
+
 1.4.8 - Fiabilite & confort
 - date de visionnage des episodes correctement synchronisee et corrigee (episodes/watched_date)
 - correction de date pour les films : non supportee par l'API (teste et confirme, abandonne pour l'instant)

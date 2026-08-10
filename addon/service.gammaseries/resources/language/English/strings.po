@@ -92,6 +92,22 @@ msgctxt "#30247"
 msgid "Stop current series sync"
 msgstr "Stop current series sync"
 
+msgctxt "#30250"
+msgid "Catch-up status"
+msgstr "Catch-up status"
+
+msgctxt "#30251"
+msgid "Check catch-up status"
+msgstr "Check catch-up status"
+
+msgctxt "#30252"
+msgid "View last catch-up report"
+msgstr "View last catch-up report"
+
+msgctxt "#30253"
+msgid "Include specials in catch-up check"
+msgstr "Include specials in catch-up check"
+
 msgctxt "#30013"
 msgid "Show added : "
 msgstr "Show added: "
