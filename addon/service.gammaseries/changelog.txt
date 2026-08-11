@@ -1,3 +1,9 @@
+1.5.14 - correction de date de visionnage pour les films
+- l'API BetaSeries a deploye un endpoint dedie (movies/watched_date) - meme mecanisme que pour
+  les episodes, precedemment abandonne faute d'endpoint fonctionnel
+- date de visionnage des films correctement synchronisee et corrigee, y compris pour les films
+  deja marques vus sur BetaSeries
+
 1.5.13 - "Inclure les episodes speciaux" desactive par defaut (etait active par defaut avant) -
   ne s'applique qu'aux nouvelles installs, decoche-le manuellement si deja installe
 

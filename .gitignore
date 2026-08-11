@@ -2,3 +2,5 @@ addon/service.betaseries.com/lastdate.tmp
 addon/service.betaseries.com/__pycache__/
 addon/service.betaseries.com/*.pyc
 addon/service.betaseries.com/*.bkp
+addon/service.gammaseries/__pycache__/
+addon/service.gammaseries/*.pyc

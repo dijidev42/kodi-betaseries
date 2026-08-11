@@ -4,6 +4,7 @@ x marquage "recupere" pendant la resync des episodes
 x addon visible dans le menu Extensions video de Kodi
 x renommage en GammaSeries (nouvel id service.gammaseries)
 x feature : suivi retard de recuperation par serie/saison + prochain episode
+x correction de date de visionnage pour les films (endpoint movies/watched_date deploye par BetaSeries)
 
 
 publier l'addon sous forme d'un vrai repository Kodi, pour le rendre dispo au grand public
@@ -12,7 +13,3 @@ message officiel sur le forum
 
 optimiser le suivi retard/prochain episode avec /episodes/latest si ca s'avere plus leger que /shows/episodes
 (doc non exploitable automatiquement - a verifier manuellement le format de reponse)
-
-correction de date de visionnage pour les films : bloque
-- aucun endpoint API ne fonctionne (watched_date/watch_date/date tous testes, movies/movie ignore le parametre)
-- a redemander au contact API

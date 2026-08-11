@@ -491,6 +491,7 @@ class BetaSeriesAgent:
         self.apiurl = 'https://api.betaseries.com'
         self.apiver = '3.0'
         self.watch_date_endpoint_unavailable = False
+        self.movie_watch_date_endpoint_unavailable = False
         self._followed_shows = set()
         self.service = self._build_service()
 
@@ -686,6 +687,45 @@ class BetaSeriesAgent:
         log('%s watch date corrected to %s' % (format_item_label(item), watch_date), xbmc.LOGINFO)
         return True
 
+    def correct_movie_watch_date(self, item):
+        service = self.service
+        if self.movie_watch_date_endpoint_unavailable:
+            return False
+
+        watch_date = item[7] if len(item) > 7 else None
+        movie_bs_id = item[0]
+        if not watch_date or not movie_bs_id:
+            log('watch date correction skipped for %s: watch_date=%r movie_bs_id=%r' % (
+                format_item_label(item), watch_date, movie_bs_id
+            ), xbmc.LOGWARNING)
+            return False
+
+        url = service[1] + '/movies/watched_date'
+        urldata = {
+            'v': self.apiver, 'key': service[2], 'token': service[6],
+            'id': movie_bs_id, 'new_date': watch_date
+        }
+        try:
+            data = get_json(url, urldata, 'POST')
+        except Exception:
+            self.service = self._service_fail(service, False)
+            log('watch date correction failed for %s' % format_item_label(item), xbmc.LOGERROR)
+            return False
+
+        errors = data.get('errors')
+        if errors:
+            code = errors[0]['code']
+            if code == 2001:
+                service[6] = ''
+            if code == -1 and 'HTTP 404' in str(errors[0].get('text', '')):
+                self.movie_watch_date_endpoint_unavailable = True
+                log('movies/watched_date endpoint returned 404 - disabling further attempts for this run', xbmc.LOGWARNING)
+            log_api_error(item, 'WatchDate', data)
+            return False
+
+        log('%s watch date corrected to %s' % (format_item_label(item), watch_date), xbmc.LOGINFO)
+        return True
+
     def _queue_success_notification(self, item):
         if not self.service[15]:
             return
@@ -756,6 +796,12 @@ class BetaSeriesAgent:
                 _flush_batched_notifications(force=False)
                 return True
 
+            if item[6] == 'movie' and item[2] not in (0,) and self.correct_movie_watch_date(item):
+                log('movie already watched on BetaSeries, watch date corrected instead: %s' % format_item_label(item), xbmc.LOGINFO)
+                self._queue_success_notification(item)
+                _flush_batched_notifications(force=False)
+                return True
+
             log_api_error(item, 'Sync', data)
             return False
 
@@ -763,6 +809,11 @@ class BetaSeriesAgent:
             # BetaSeries silently ignores the "date" param on /episodes/watched when the
             # episode is already marked watched - force it via the dedicated endpoint too.
             self.correct_episode_watch_date(item)
+
+        if item[6] == 'movie' and item[2] not in (0,) and (item[7] if len(item) > 7 else None):
+            # Mirror the episode behavior: /movies/movie may silently ignore "date" when
+            # the movie is already marked watched - force it via the dedicated endpoint too.
+            self.correct_movie_watch_date(item)
 
         self._queue_success_notification(item)
         _flush_batched_notifications(force=False)
@@ -1253,20 +1304,38 @@ class ManualSync:
 
                 key = 'movie_%s' % item[0]
                 state = item[2]
-                if key in index and index.get(key, {}).get('state') == state:
-                    skipped += 1
-                    continue
+                watch_date = item[7] if len(item) > 7 else None
+                movie_changed = False
+                movie_error = False
 
-                if self.agent.mark_item(item, force=True):
-                    updated += 1
+                if key in index and index.get(key, {}).get('state') == state:
+                    if state == 1 and watch_date and index.get(key, {}).get('date') != watch_date:
+                        if self.agent.correct_movie_watch_date(item):
+                            movie_changed = True
+                            new_index[key] = dict(new_index.get(key, index[key]))
+                            new_index[key]['date'] = watch_date
+                            new_index[key]['ts'] = int(time.time())
+                            save_index(MOVIES_INDEX_FILE, new_index)
+                        else:
+                            movie_error = True
+                elif self.agent.mark_item(item, force=True):
+                    movie_changed = True
                     new_index[key] = {
                         'state': state,
                         'ts': int(time.time()),
-                        'label': item[5]
+                        'label': item[5],
+                        'date': watch_date
                     }
                     save_index(MOVIES_INDEX_FILE, new_index)
                 else:
+                    movie_error = True
+
+                if movie_error:
                     errors_count += 1
+                elif movie_changed:
+                    updated += 1
+                else:
+                    skipped += 1
         finally:
             progress.close()
             save_index(MOVIES_INDEX_FILE, new_index)
